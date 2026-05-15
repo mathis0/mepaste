@@ -1,0 +1,15 @@
+[project]
+name = "mepaste-backend"
+version = "0.4.2"
+description = "mepaste — one person, one textarea, one short link."
+requires-python = ">=3.12"
+dependencies = [
+  "fastapi>=0.110",
+  "uvicorn[standard]>=0.27",
+  "sqlalchemy[asyncio]>=2.0",
+  "asyncpg>=0.29",
+  "alembic>=1.13",
+  "pydantic>=2.6",
+  "passlib[bcrypt]>=1.7.4",
+  "bcrypt==4.0.1",
+]
