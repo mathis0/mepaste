@@ -2,9 +2,9 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { AppFrame } from "../components/AppFrame";
 import { BrandMark } from "../components/BrandMark";
-import { Chip } from "../components/Chip";
 import { DamavandScene } from "../components/DamavandScene";
 import { Icon } from "../components/Icon";
+import { PasteOptionsSheet, SheetOpts, expiryLabel } from "../components/PasteOptionsSheet";
 import { PublishToast } from "../components/PublishToast";
 import { SmashOverlay } from "../components/SmashOverlay";
 import { I } from "../icons";
@@ -13,42 +13,39 @@ import {
   FARSI,
   HAIR,
   INK,
+  INK_2,
   INK_3,
   INK_4,
   MONO,
+  PEACH,
   SANS,
   TEAL,
   TEAL_DARK,
+  WARN,
 } from "../theme";
 import { createPaste, ApiError, ExpiresIn, Visibility } from "../api";
 import { useLang, t } from "../i18n";
 
 type State = "idle" | "smashing" | "done";
 
-const VISIBILITY_CYCLE: Visibility[] = ["public", "unlisted", "private"];
-const EXPIRES_CYCLE: ExpiresIn[] = ["1h", "1d", "never"];
-
-function loadDefaults() {
+function loadDefaults(): SheetOpts {
   const v = (localStorage.getItem("mp_default_visibility") as Visibility) || "public";
   const e = (localStorage.getItem("mp_default_expires") as ExpiresIn) || "1d";
   const burn = localStorage.getItem("mp_default_burn") === "1";
-  return { v, e, burn };
+  return { visibility: v, expires: e, burn, password: false };
 }
 
 export function CreateScreen() {
   const lang = useLang();
   const isFa = lang === "fa";
   const nav = useNavigate();
-  const defaults = useMemo(loadDefaults, []);
 
   const [state, setState] = useState<State>("idle");
   const [title, setTitle] = useState("");
   const [content, setContent] = useState("");
-  const [visibility, setVisibility] = useState<Visibility>(defaults.v);
-  const [expiresIn, setExpiresIn] = useState<ExpiresIn>(defaults.e);
+  const [sheetOpen, setSheetOpen] = useState(false);
+  const [opts, setOpts] = useState<SheetOpts>(useMemo(loadDefaults, []));
   const [password, setPassword] = useState("");
-  const [showPassword, setShowPassword] = useState(false);
-  const [burn, setBurn] = useState<boolean>(defaults.burn);
   const [resultUrl, setResultUrl] = useState<string>("");
   const [resultSlug, setResultSlug] = useState<string>("");
   const [error, setError] = useState<string | null>(null);
@@ -58,24 +55,10 @@ export function CreateScreen() {
 
   const wordCount = content.trim() ? content.trim().split(/\s+/).length : 0;
 
-  const expiresLabel = (e: ExpiresIn): string =>
-    e === "1h" ? t(lang, "wilts_in_an_hour")
-    : e === "1d" ? t(lang, "wilts_in_a_day")
-    : t(lang, "wilts_never");
-
-  const cycleVisibility = () => {
-    const i = VISIBILITY_CYCLE.indexOf(visibility);
-    setVisibility(VISIBILITY_CYCLE[(i + 1) % VISIBILITY_CYCLE.length]);
-  };
-  const cycleExpires = () => {
-    const i = EXPIRES_CYCLE.indexOf(expiresIn);
-    setExpiresIn(EXPIRES_CYCLE[(i + 1) % EXPIRES_CYCLE.length]);
-  };
-
   const publish = async () => {
     if (state !== "idle") return;
+    setSheetOpen(false);
     if (!content.trim()) {
-      // small nudge — focus textarea
       taRef.current?.focus();
       return;
     }
@@ -85,14 +68,13 @@ export function CreateScreen() {
       const res = await createPaste({
         title: title.trim() || null,
         content,
-        visibility,
-        expires_in: expiresIn,
-        password: showPassword && password ? password : null,
-        burn_after_read: burn,
+        visibility: opts.visibility,
+        expires_in: opts.expires,
+        password: opts.password && password ? password : null,
+        burn_after_read: opts.burn,
       });
       setResultUrl(res.url);
       setResultSlug(res.slug);
-      // smash animation lasts ~2s before toast appears
       setTimeout(() => setState("done"), 2000);
     } catch (e) {
       const err = e as ApiError;
@@ -106,7 +88,6 @@ export function CreateScreen() {
     setContent("");
     setTitle("");
     setPassword("");
-    setShowPassword(false);
     setResultUrl("");
     setResultSlug("");
     setTimeout(() => taRef.current?.focus(), 0);
@@ -117,11 +98,14 @@ export function CreateScreen() {
   const dir: "rtl" | "ltr" = isFa ? "rtl" : "ltr";
   const screenFont = isFa ? FARSI : SANS;
 
+  const visIcon = opts.visibility === "private" ? I.lock
+    : opts.visibility === "unlisted" ? I.eye
+    : I.globe;
+
   return (
     <AppFrame activeTab="create">
       <DamavandScene />
 
-      {/* top bar */}
       <div
         dir={dir}
         style={{
@@ -172,7 +156,6 @@ export function CreateScreen() {
         </div>
       </div>
 
-      {/* composer */}
       <div
         dir={dir}
         style={{
@@ -180,12 +163,11 @@ export function CreateScreen() {
           top: 68,
           left: 16,
           right: 16,
-          bottom: 218,
+          bottom: 168,
           background: CARD,
           borderRadius: 22,
           border: `1px solid ${HAIR}`,
-          boxShadow:
-            "0 1px 0 rgba(0,0,0,0.02), 0 24px 60px -32px rgba(220,76,62,0.2)",
+          boxShadow: "0 1px 0 rgba(0,0,0,0.02), 0 24px 60px -32px rgba(220,76,62,0.2)",
           overflow: "hidden",
           display: "flex",
           flexDirection: "column",
@@ -193,14 +175,7 @@ export function CreateScreen() {
           zIndex: 5,
         }}
       >
-        <div
-          style={{
-            padding: "14px 18px 4px",
-            display: "flex",
-            alignItems: "center",
-            gap: 10,
-          }}
-        >
+        <div style={{ padding: "14px 18px 4px", display: "flex", alignItems: "center", gap: 10 }}>
           <input
             type="text"
             value={title}
@@ -269,7 +244,6 @@ export function CreateScreen() {
         </div>
       </div>
 
-      {/* controls panel */}
       <div
         dir={dir}
         style={{
@@ -284,47 +258,67 @@ export function CreateScreen() {
           fontFamily: screenFont,
         }}
       >
-        <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-          <Chip
-            icon={I.globe}
-            label={t(lang, visibility)}
-            active
-            onClick={cycleVisibility}
-          />
-          <Chip icon={I.clock} label={expiresLabel(expiresIn)} active onClick={cycleExpires} />
-          <Chip
-            icon={I.lock}
-            label={t(lang, "password")}
-            active={showPassword}
-            onClick={() => setShowPassword((v) => !v)}
-          />
-          <Chip
-            icon={I.flame}
-            label={t(lang, "burn_after_read")}
-            active={burn}
-            onClick={() => setBurn((v) => !v)}
-          />
-        </div>
-
-        {showPassword && (
-          <input
-            type="password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            placeholder={t(lang, "password")}
+        <button
+          type="button"
+          onClick={() => setSheetOpen(true)}
+          style={{
+            height: 46,
+            padding: "0 14px",
+            borderRadius: 14,
+            background: "#fff",
+            border: `1px solid ${HAIR}`,
+            boxShadow: "0 8px 20px -16px rgba(80,40,20,0.25)",
+            display: "flex",
+            alignItems: "center",
+            gap: 8,
+            cursor: "pointer",
+            textAlign: "left",
+            fontFamily: screenFont,
+          }}
+        >
+          <span
             style={{
-              height: 36,
-              padding: "0 12px",
-              borderRadius: 10,
-              border: `1px solid ${HAIR}`,
-              background: "#fff",
-              outline: "none",
               fontFamily: MONO,
-              fontSize: 13,
-              direction: dir,
+              fontSize: 10,
+              color: INK_4,
+              letterSpacing: 1.2,
+              textTransform: "uppercase",
+              fontWeight: 600,
             }}
-          />
-        )}
+          >
+            {t(lang, "options_label")}
+          </span>
+          <span
+            style={{
+              flex: 1,
+              display: "flex",
+              alignItems: "center",
+              gap: 6,
+              flexWrap: "wrap",
+              fontSize: 13,
+              color: INK_2,
+              fontWeight: 500,
+              letterSpacing: -0.1,
+            }}
+          >
+            <OptBit icon={visIcon} label={t(lang, opts.visibility)} accent={TEAL} />
+            <span style={{ color: INK_4 }}>·</span>
+            <OptBit icon={I.clock} label={expiryLabel(lang, opts.expires)} accent={PEACH} />
+            {opts.burn && (
+              <>
+                <span style={{ color: INK_4 }}>·</span>
+                <OptBit icon={I.flame} label={t(lang, "burns_label")} accent={WARN} />
+              </>
+            )}
+            {opts.password && (
+              <>
+                <span style={{ color: INK_4 }}>·</span>
+                <OptBit icon={I.lock} label={t(lang, "password")} accent={INK_2} />
+              </>
+            )}
+          </span>
+          <Icon d={I.chev} s={14} c={INK_4} sw={2.2} />
+        </button>
 
         <button
           type="button"
@@ -380,10 +374,62 @@ export function CreateScreen() {
         )}
       </div>
 
+      {/* If password is enabled and the sheet isn't open, show an inline password input. */}
+      {opts.password && !sheetOpen && (
+        <div
+          dir={dir}
+          style={{
+            position: "absolute",
+            left: 16,
+            right: 16,
+            bottom: 152,
+            zIndex: 5,
+          }}
+        >
+          <input
+            type="password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            placeholder={t(lang, "password")}
+            style={{
+              width: "100%",
+              height: 36,
+              padding: "0 12px",
+              borderRadius: 10,
+              border: `1px solid ${HAIR}`,
+              background: "#fff",
+              outline: "none",
+              fontFamily: MONO,
+              fontSize: 13,
+              direction: dir,
+            }}
+          />
+        </div>
+      )}
+
       {state === "smashing" && <SmashOverlay />}
       {state === "done" && (
         <PublishToast url={resultUrl} onReset={reset} onOpen={openIt} />
       )}
+
+      {sheetOpen && (
+        <PasteOptionsSheet
+          opts={opts}
+          lang={lang}
+          onChange={(patch) => setOpts((o) => ({ ...o, ...patch }))}
+          onClose={() => setSheetOpen(false)}
+          onPublish={publish}
+        />
+      )}
     </AppFrame>
+  );
+}
+
+function OptBit({ icon, label, accent }: { icon: string; label: string; accent: string }) {
+  return (
+    <span style={{ display: "inline-flex", alignItems: "center", gap: 4 }}>
+      <Icon d={icon} s={13} c={accent} sw={2} />
+      <span style={{ color: accent === INK_2 ? INK_2 : accent }}>{label}</span>
+    </span>
   );
 }

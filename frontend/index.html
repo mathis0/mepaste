@@ -23,6 +23,14 @@
       }
       *, *::before, *::after { box-sizing: border-box; }
       @keyframes mp-blink { 50% { opacity: 0; } }
+      @keyframes mp-sheet-in {
+        0%   { transform: translateY(100%); }
+        100% { transform: translateY(0); }
+      }
+      @keyframes mp-scrim-in {
+        0%   { opacity: 0; }
+        100% { opacity: 1; }
+      }
       @keyframes mp-rain {
         0%   { transform: translate(0, 0) rotate(0deg); opacity: 0; }
         8%   { opacity: 1; }

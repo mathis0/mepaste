@@ -1,5 +1,5 @@
 export type Visibility = "public" | "unlisted" | "private";
-export type ExpiresIn = "1h" | "1d" | "never";
+export type ExpiresIn = "10m" | "1h" | "1d" | "1w" | "never";
 
 export interface PasteCreate {
   title?: string | null;
