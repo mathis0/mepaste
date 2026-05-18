@@ -5,7 +5,7 @@ import os
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from .routers import pastes
+from .routers import auth, pastes
 
 
 def create_app() -> FastAPI:
@@ -28,6 +28,7 @@ def create_app() -> FastAPI:
     async def health() -> dict[str, str]:
         return {"status": "fresh", "vintage": "v0.4.2"}
 
+    app.include_router(auth.router)
     app.include_router(pastes.router)
     return app
 

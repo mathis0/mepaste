@@ -1,11 +1,14 @@
 import { Route, Routes } from "react-router-dom";
 import { CreateScreen } from "./screens/CreateScreen";
-import { ViewScreen } from "./screens/ViewScreen";
 import { ListScreen } from "./screens/ListScreen";
+import { PasteRoute } from "./screens/PasteRoute";
 import { SettingsScreen } from "./screens/SettingsScreen";
+import { SignInScreen } from "./screens/SignInScreen";
+import { SignUpScreen } from "./screens/SignUpScreen";
 import { DesktopCreateScreen } from "./screens/desktop/DesktopCreateScreen";
-import { DesktopViewScreen } from "./screens/desktop/DesktopViewScreen";
 import { DesktopListScreen } from "./screens/desktop/DesktopListScreen";
+import { DesktopSignInScreen } from "./screens/desktop/DesktopSignInScreen";
+import { DesktopSignUpScreen } from "./screens/desktop/DesktopSignUpScreen";
 import { useLang } from "./i18n";
 import { useIsDesktop } from "./responsive";
 
@@ -15,8 +18,11 @@ function CreateRoute() {
 function ListRoute() {
   return useIsDesktop() ? <DesktopListScreen /> : <ListScreen />;
 }
-function ViewRoute() {
-  return useIsDesktop() ? <DesktopViewScreen /> : <ViewScreen />;
+function SignUpRoute() {
+  return useIsDesktop() ? <DesktopSignUpScreen /> : <SignUpScreen />;
+}
+function SignInRoute() {
+  return useIsDesktop() ? <DesktopSignInScreen /> : <SignInScreen />;
 }
 
 export function App() {
@@ -28,7 +34,9 @@ export function App() {
       <Route path="/" element={<CreateRoute />} />
       <Route path="/list" element={<ListRoute />} />
       <Route path="/settings" element={<SettingsScreen />} />
-      <Route path="/p/:slug" element={<ViewRoute />} />
+      <Route path="/signin" element={<SignInRoute />} />
+      <Route path="/signup" element={<SignUpRoute />} />
+      <Route path="/p/:slug" element={<PasteRoute />} />
       <Route path="*" element={<CreateRoute />} />
     </Routes>
   );

@@ -36,7 +36,7 @@ function humanizeRipeness(expiresAt: string | null): { fresh: string; wilts: str
   return { fresh: "fresh · 2m", wilts: `wilts in ${wiltsStr} 🍅`, pct: 5 };
 }
 
-export function DesktopViewScreen() {
+export function DesktopViewScreen({ passwordOverride }: { passwordOverride?: string | null } = {}) {
   const { slug } = useParams<{ slug: string }>();
   const nav = useNavigate();
   const lang = useLang();
@@ -44,24 +44,17 @@ export function DesktopViewScreen() {
   const [paste, setPaste] = useState<Paste | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<"wilted" | "burned" | "not_found" | "other" | null>(null);
-  const [needsPassword, setNeedsPassword] = useState(false);
-  const [pwInput, setPwInput] = useState("");
-  const [pwError, setPwError] = useState(false);
   const [copied, setCopied] = useState(false);
 
-  const load = async (password?: string) => {
+  const load = async () => {
     if (!slug) return;
     setLoading(true); setError(null);
     try {
-      const p = await getPaste(slug, password);
+      const p = await getPaste(slug, passwordOverride ?? undefined);
       setPaste(p);
-      setNeedsPassword(false);
     } catch (e) {
       const err = e as ApiError;
-      if (err.status === 401 && err.body?.detail?.password_required) {
-        setNeedsPassword(true);
-        if (password) setPwError(true);
-      } else if (err.status === 410) {
+      if (err.status === 410) {
         setError(err.body?.detail?.reason === "burned" ? "burned" : "wilted");
       } else if (err.status === 404) {
         setError("not_found");
@@ -71,7 +64,7 @@ export function DesktopViewScreen() {
     } finally { setLoading(false); }
   };
 
-  useEffect(() => { void load(); /* eslint-disable-next-line */ }, [slug]);
+  useEffect(() => { void load(); /* eslint-disable-next-line */ }, [slug, passwordOverride]);
 
   const copyLink = async () => {
     try { await navigator.clipboard.writeText(window.location.href); setCopied(true); setTimeout(() => setCopied(false), 1500); }
@@ -83,47 +76,6 @@ export function DesktopViewScreen() {
       <DesktopFrame active="list" lang={lang} crumbs={[t(lang, "cb_my_pastes"), "…"]}>
         <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", fontFamily: MONO, color: INK_3 }}>
           loading…
-        </div>
-      </DesktopFrame>
-    );
-  }
-
-  if (needsPassword) {
-    return (
-      <DesktopFrame active="list" lang={lang} crumbs={[t(lang, "cb_my_pastes"), slug ?? ""]}>
-        <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", padding: 40 }}>
-          <div style={{ width: 380, background: CARD, borderRadius: 14, border: `1px solid ${HAIR}`, padding: 24 }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-              <Icon d={I.lock} s={20} c={TEAL} sw={2} />
-              <div style={{ fontSize: 17, fontWeight: 700, color: INK }}>
-                {t(lang, "this_one_needs_password")}
-              </div>
-            </div>
-            <input
-              type="password"
-              value={pwInput}
-              onChange={(e) => { setPwInput(e.target.value); setPwError(false); }}
-              onKeyDown={(e) => { if (e.key === "Enter") void load(pwInput); }}
-              autoFocus
-              placeholder={t(lang, "password")}
-              style={{
-                marginTop: 14, width: "100%", height: 40, padding: "0 12px", borderRadius: 10,
-                border: `1px solid ${pwError ? "#c0392b" : HAIR}`, background: "#fff", outline: "none",
-                fontFamily: MONO, fontSize: 14,
-              }}
-            />
-            <button
-              type="button"
-              onClick={() => void load(pwInput)}
-              style={{
-                marginTop: 12, width: "100%", height: 42, borderRadius: 11, border: "none", cursor: "pointer",
-                background: `linear-gradient(180deg, ${TEAL} 0%, ${TEAL_DARK} 100%)`,
-                color: "#fff", fontFamily: SANS, fontSize: 14, fontWeight: 600,
-              }}
-            >
-              {t(lang, "unlock")}
-            </button>
-          </div>
         </div>
       </DesktopFrame>
     );

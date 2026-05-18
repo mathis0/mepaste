@@ -25,6 +25,7 @@ import {
 } from "../theme";
 import { createPaste, ApiError, ExpiresIn, Visibility } from "../api";
 import { useLang, t } from "../i18n";
+import { useAuth } from "../auth";
 
 type State = "idle" | "smashing" | "done";
 
@@ -39,6 +40,7 @@ export function CreateScreen() {
   const lang = useLang();
   const isFa = lang === "fa";
   const nav = useNavigate();
+  const { mode, user } = useAuth();
 
   const [state, setState] = useState<State>("idle");
   const [title, setTitle] = useState("");
@@ -78,7 +80,12 @@ export function CreateScreen() {
       setTimeout(() => setState("done"), 2000);
     } catch (e) {
       const err = e as ApiError;
-      setError(err?.body?.detail?.message ?? err?.message ?? "something went wrong");
+      if (err?.status === 403 && err?.body?.detail === "private_requires_account") {
+        setState("idle");
+        nav("/signup");
+        return;
+      }
+      setError(err?.body?.detail?.message ?? err?.body?.detail ?? err?.message ?? "something went wrong");
       setState("idle");
     }
   };
@@ -144,7 +151,53 @@ export function CreateScreen() {
             </span>
           )}
         </div>
-        <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+          {mode === "anon" ? (
+            <button
+              type="button"
+              onClick={() => nav("/signup")}
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                gap: 5,
+                fontFamily: MONO,
+                fontSize: 10,
+                color: INK_3,
+                letterSpacing: 0.6,
+                padding: "4px 9px",
+                borderRadius: 99,
+                border: `1px dashed ${HAIR}`,
+                background: "transparent",
+                cursor: "pointer",
+              }}
+            >
+              <span style={{ width: 5, height: 5, borderRadius: 99, background: "#6e9b56" }} />
+              {t(lang, "mode_anon_create_pill")}
+            </button>
+          ) : (
+            <button
+              type="button"
+              onClick={() => nav("/settings")}
+              aria-label={user?.email ?? "you"}
+              style={{
+                width: 28,
+                height: 28,
+                borderRadius: 999,
+                background: "linear-gradient(135deg, #fce5e0 0%, #f8c8c0 100%)",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                fontSize: 12,
+                fontWeight: 700,
+                color: "#b53a2e",
+                fontFamily: SANS,
+                border: `1px solid ${HAIR}`,
+                cursor: "pointer",
+              }}
+            >
+              {(user?.name?.[0] || user?.email?.[0] || "?").toLowerCase()}
+            </button>
+          )}
           <button
             type="button"
             onClick={() => nav("/list")}
@@ -409,16 +462,24 @@ export function CreateScreen() {
 
       {state === "smashing" && <SmashOverlay />}
       {state === "done" && (
-        <PublishToast url={resultUrl} onReset={reset} onOpen={openIt} />
+        <PublishToast
+          url={resultUrl}
+          onReset={reset}
+          onOpen={openIt}
+          mode={mode}
+          onOpenTab={() => nav("/signup")}
+        />
       )}
 
       {sheetOpen && (
         <PasteOptionsSheet
           opts={opts}
           lang={lang}
+          mode={mode}
           onChange={(patch) => setOpts((o) => ({ ...o, ...patch }))}
           onClose={() => setSheetOpen(false)}
           onPublish={publish}
+          onPrivateRequiresAccount={() => nav("/signup")}
         />
       )}
     </AppFrame>

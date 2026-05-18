@@ -4,12 +4,14 @@ import re
 from datetime import datetime, timedelta, timezone
 
 from fastapi import APIRouter, Depends, Header, HTTPException, Query, Response, status
+from pydantic import BaseModel
 from sqlalchemy import or_, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from ..auth import current_user
 from ..db import get_session
-from ..models import Paste
+from ..models import Paste, User
 from ..schemas import (
     ExpiresIn,
     PasteCreate,
@@ -51,6 +53,14 @@ def _is_expired(p: Paste) -> bool:
     return p.expires_at is not None and p.expires_at <= datetime.now(timezone.utc)
 
 
+def _is_owner(row: Paste, owner_token: str | None, user: User | None) -> bool:
+    if user is not None and row.user_id == user.id:
+        return True
+    if owner_token and owner_token == row.owner_token:
+        return True
+    return False
+
+
 def _snippet(content: str, n: int = 80) -> str:
     one_line = content.replace("\n", " ").strip()
     return one_line[:n]
@@ -60,9 +70,15 @@ def _snippet(content: str, n: int = 80) -> str:
 async def create_paste(
     body: PasteCreate,
     x_owner_token: str | None = Header(default=None, alias="X-Owner-Token"),
+    authorization: str | None = Header(default=None),
     db: AsyncSession = Depends(get_session),
 ) -> PasteCreated:
     owner = _require_owner(x_owner_token)
+    user = await current_user(authorization, db)
+
+    # Anonymous visitors can't ship a private paste — that's a logged-in feature.
+    if body.visibility == "private" and user is None:
+        raise HTTPException(status_code=403, detail="private_requires_account")
 
     pw_hash = hash_password(body.password) if body.password else None
 
@@ -80,6 +96,7 @@ async def create_paste(
             burn_after_read=body.burn_after_read,
             expires_at=_expires_at(body.expires_in),
             owner_token=owner,
+            user_id=user.id if user else None,
         )
         db.add(candidate)
         try:
@@ -105,6 +122,7 @@ async def _load_for_read(
     slug: str,
     password: str | None,
     owner_token: str | None,
+    user: User | None,
     db: AsyncSession,
 ) -> Paste:
     row = (await db.execute(select(Paste).where(Paste.slug == slug))).scalar_one_or_none()
@@ -114,25 +132,63 @@ async def _load_for_read(
         raise HTTPException(status_code=410, detail={"reason": "burned"})
     if _is_expired(row):
         raise HTTPException(status_code=410, detail={"reason": "wilted"})
-    if row.password_hash is not None:
-        # owners can always read their own paste without password
-        is_owner = bool(owner_token) and owner_token == row.owner_token
-        if not is_owner:
-            if not password or not verify_password(password, row.password_hash):
-                raise HTTPException(
-                    status_code=401,
-                    detail={"password_required": True},
-                )
+    if row.password_hash is not None and not _is_owner(row, owner_token, user):
+        if not password or not verify_password(password, row.password_hash):
+            raise HTTPException(status_code=401, detail={"password_required": True})
     return row
 
 
-async def _record_read(row: Paste, owner_token: str | None, db: AsyncSession) -> None:
-    """Increment view count, and burn the paste if burn_after_read is set and reader is not the owner."""
+async def _record_read(
+    row: Paste, owner_token: str | None, user: User | None, db: AsyncSession
+) -> None:
     row.view_count = row.view_count + 1
-    is_owner = bool(owner_token) and owner_token == row.owner_token
-    if row.burn_after_read and not is_owner:
+    if row.burn_after_read and not _is_owner(row, owner_token, user):
         row.burned = True
     await db.commit()
+
+
+class PasteMeta(BaseModel):
+    slug: str
+    title: str | None
+    language: str
+    visibility: Visibility
+    burn_after_read: bool
+    has_password: bool
+    is_owner: bool
+    expires_at: datetime | None
+    created_at: datetime
+    line_count: int
+
+
+@router.get("/{slug}/meta", response_model=PasteMeta)
+async def get_paste_meta(
+    slug: str,
+    x_owner_token: str | None = Header(default=None, alias="X-Owner-Token"),
+    authorization: str | None = Header(default=None),
+    db: AsyncSession = Depends(get_session),
+) -> PasteMeta:
+    """Peek at a paste without revealing content or burning it.
+    Lets the frontend decide between password gate / burn warning / direct view."""
+    row = (await db.execute(select(Paste).where(Paste.slug == slug))).scalar_one_or_none()
+    if row is None:
+        raise HTTPException(status_code=404, detail="not_found")
+    if row.burned:
+        raise HTTPException(status_code=410, detail={"reason": "burned"})
+    if _is_expired(row):
+        raise HTTPException(status_code=410, detail={"reason": "wilted"})
+    user = await current_user(authorization, db)
+    return PasteMeta(
+        slug=row.slug,
+        title=row.title,
+        language=row.language,
+        visibility=row.visibility,  # type: ignore[arg-type]
+        burn_after_read=row.burn_after_read,
+        has_password=row.password_hash is not None,
+        is_owner=_is_owner(row, x_owner_token, user),
+        expires_at=row.expires_at,
+        created_at=row.created_at,
+        line_count=row.content.count("\n") + 1,
+    )
 
 
 @router.get("/{slug}", response_model=PasteOut)
@@ -140,11 +196,12 @@ async def get_paste(
     slug: str,
     password: str | None = Query(default=None),
     x_owner_token: str | None = Header(default=None, alias="X-Owner-Token"),
+    authorization: str | None = Header(default=None),
     db: AsyncSession = Depends(get_session),
 ) -> PasteOut:
-    row = await _load_for_read(slug, password, x_owner_token, db)
-    is_owner = bool(x_owner_token) and x_owner_token == row.owner_token
-    # capture before mutation
+    user = await current_user(authorization, db)
+    row = await _load_for_read(slug, password, x_owner_token, user, db)
+    is_owner = _is_owner(row, x_owner_token, user)
     out = PasteOut(
         slug=row.slug,
         title=row.title,
@@ -157,7 +214,7 @@ async def get_paste(
         created_at=row.created_at,
         is_owner=is_owner,
     )
-    await _record_read(row, x_owner_token, db)
+    await _record_read(row, x_owner_token, user, db)
     return out
 
 
@@ -166,11 +223,13 @@ async def get_paste_raw(
     slug: str,
     password: str | None = Query(default=None),
     x_owner_token: str | None = Header(default=None, alias="X-Owner-Token"),
+    authorization: str | None = Header(default=None),
     db: AsyncSession = Depends(get_session),
 ) -> Response:
-    row = await _load_for_read(slug, password, x_owner_token, db)
+    user = await current_user(authorization, db)
+    row = await _load_for_read(slug, password, x_owner_token, user, db)
     body = row.content
-    await _record_read(row, x_owner_token, db)
+    await _record_read(row, x_owner_token, user, db)
     return Response(content=body, media_type="text/plain; charset=utf-8")
 
 
@@ -179,10 +238,18 @@ async def list_pastes(
     q: str | None = Query(default=None),
     visibility: Visibility | None = Query(default=None),
     x_owner_token: str | None = Header(default=None, alias="X-Owner-Token"),
+    authorization: str | None = Header(default=None),
     db: AsyncSession = Depends(get_session),
 ) -> list[PasteListItem]:
     owner = _require_owner(x_owner_token)
-    stmt = select(Paste).where(Paste.owner_token == owner).order_by(Paste.created_at.desc())
+    user = await current_user(authorization, db)
+    # Logged-in users see every paste tied to their account, plus anything
+    # this browser owns. Anonymous users see only this browser's pastes.
+    if user is not None:
+        ownership = or_(Paste.owner_token == owner, Paste.user_id == user.id)
+    else:
+        ownership = Paste.owner_token == owner
+    stmt = select(Paste).where(ownership).order_by(Paste.created_at.desc())
     if visibility:
         stmt = stmt.where(Paste.visibility == visibility)
     if q:
@@ -209,13 +276,15 @@ async def list_pastes(
 async def delete_paste(
     slug: str,
     x_owner_token: str | None = Header(default=None, alias="X-Owner-Token"),
+    authorization: str | None = Header(default=None),
     db: AsyncSession = Depends(get_session),
 ) -> Response:
     owner = _require_owner(x_owner_token)
+    user = await current_user(authorization, db)
     row = (await db.execute(select(Paste).where(Paste.slug == slug))).scalar_one_or_none()
     if row is None:
         raise HTTPException(status_code=404, detail="not_found")
-    if row.owner_token != owner:
+    if not _is_owner(row, owner, user):
         raise HTTPException(status_code=403, detail="not_yours")
     await db.delete(row)
     await db.commit()

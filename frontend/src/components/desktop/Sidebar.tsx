@@ -19,6 +19,7 @@ import {
   TEAL_TINT,
 } from "../../theme";
 import { Lang, t } from "../../i18n";
+import { useAuth } from "../../auth";
 
 export type SidebarActive = "new" | "list" | "settings" | null;
 
@@ -30,6 +31,7 @@ type Props = {
 
 export function Sidebar({ active, lang, pasteCount }: Props) {
   const nav = useNavigate();
+  const { user, mode } = useAuth();
   const isFa = lang === "fa";
   const dir: "rtl" | "ltr" = isFa ? "rtl" : "ltr";
 
@@ -170,7 +172,39 @@ export function Sidebar({ active, lang, pasteCount }: Props) {
         <div style={{ color: PEACH, marginTop: 2 }}>♥ hand-built in tehran</div>
       </div>
 
-      <NavRow icon={I.user} label="nima" onClick={() => nav("/settings")} active={active === "settings"} />
+      {mode === "user" ? (
+        <NavRow
+          icon={I.user}
+          label={user?.name || user?.email?.split("@")[0] || "you"}
+          onClick={() => nav("/settings")}
+          active={active === "settings"}
+        />
+      ) : (
+        <button
+          type="button"
+          onClick={() => nav("/signup")}
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: 10,
+            height: 36,
+            padding: "0 12px",
+            borderRadius: 10,
+            background: TEAL_TINT,
+            border: `1px dashed ${TEAL_BORDER}`,
+            cursor: "pointer",
+            textAlign: "left",
+            fontFamily: "inherit",
+            width: "100%",
+          }}
+        >
+          <span style={{ width: 5, height: 5, borderRadius: 99, background: PEACH }} />
+          <span style={{ flex: 1, fontSize: 13, color: INK, fontWeight: 600 }}>
+            {t(lang, "mode_open_a_tab")}
+          </span>
+          <span style={{ fontSize: 14, color: TEAL }}>→</span>
+        </button>
+      )}
     </div>
   );
 

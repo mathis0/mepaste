@@ -18,6 +18,10 @@ import {
 } from "../theme";
 import { ApiError, PasteListItem, Visibility, listPastes } from "../api";
 import { useLang, t } from "../i18n";
+import { useAuth } from "../auth";
+import { BrandMark } from "../components/BrandMark";
+import { Stamp } from "../components/Stamp";
+import { TEAL_BORDER, TEAL_DARK, INK_2, PEACH } from "../theme";
 
 type Filter = "all" | Visibility;
 
@@ -48,6 +52,7 @@ function wiltText(expiresAt: string | null): string {
 export function ListScreen() {
   const nav = useNavigate();
   const lang = useLang();
+  const { mode } = useAuth();
 
   const [rows, setRows] = useState<PasteListItem[]>([]);
   const [q, setQ] = useState("");
@@ -93,9 +98,30 @@ export function ListScreen() {
           padding: "0 20px",
         }}
       >
-        <span style={{ fontSize: 17, fontWeight: 600, color: INK, letterSpacing: -0.2 }}>
-          {t(lang, "my_pastes")}
-        </span>
+        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          <span style={{ fontSize: 17, fontWeight: 600, color: INK, letterSpacing: -0.2 }}>
+            {t(lang, "my_pastes")}
+          </span>
+          {mode === "anon" && (
+            <span
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                gap: 5,
+                fontFamily: MONO,
+                fontSize: 10,
+                color: INK_3,
+                letterSpacing: 0.6,
+                padding: "3px 8px",
+                borderRadius: 99,
+                border: `1px dashed ${HAIR}`,
+              }}
+            >
+              <span style={{ width: 5, height: 5, borderRadius: 99, background: PEACH }} />
+              {t(lang, "mode_anonymous")}
+            </span>
+          )}
+        </div>
         <button
           type="button"
           onClick={() => nav("/")}
@@ -203,6 +229,103 @@ export function ListScreen() {
           gap: 10,
         }}
       >
+        {mode === "anon" && !loading && (
+          <div
+            style={{
+              background: CARD,
+              borderRadius: 18,
+              border: `1px solid ${HAIR}`,
+              padding: "18px 18px 16px",
+              backgroundImage:
+                "radial-gradient(circle at 12px 12px, rgba(220,76,62,0.05) 1.2px, transparent 1.2px)",
+              backgroundSize: "18px 18px",
+              boxShadow: "0 16px 40px -28px rgba(80,40,20,0.3)",
+              position: "relative",
+            }}
+          >
+            <div style={{ position: "absolute", top: -12, right: 14 }}>
+              <Stamp
+                color={PEACH}
+                rotate={8}
+                style={{ fontSize: 9, padding: "3px 7px 2px", letterSpacing: 1.2 }}
+              >
+                optional · totally
+              </Stamp>
+            </div>
+            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              <BrandMark size={20} />
+              <span
+                style={{
+                  fontFamily: MONO,
+                  fontSize: 11,
+                  fontWeight: 700,
+                  color: TEAL,
+                  letterSpacing: 1.4,
+                  textTransform: "uppercase",
+                }}
+              >
+                you're anonymous
+              </span>
+            </div>
+            <div
+              style={{
+                marginTop: 8,
+                fontSize: 22,
+                fontWeight: 700,
+                color: INK,
+                letterSpacing: -0.4,
+                lineHeight: "28px",
+              }}
+            >
+              {t(lang, "anon_no_tab_yet")}{" "}
+              <span style={{ color: TEAL }}>{t(lang, "anon_recent_three")}</span>{" "}
+              {t(lang, "anon_kept_browser")}
+            </div>
+            <div style={{ marginTop: 6, fontSize: 12.5, color: INK_3, lineHeight: "18px" }}>
+              {t(lang, "anon_open_tab_sync")}
+            </div>
+            <div style={{ marginTop: 12, display: "flex", gap: 8 }}>
+              <button
+                type="button"
+                onClick={() => nav("/signup")}
+                style={{
+                  flex: 1,
+                  height: 42,
+                  borderRadius: 12,
+                  border: "none",
+                  cursor: "pointer",
+                  background: `linear-gradient(180deg, ${TEAL} 0%, ${TEAL_DARK} 100%)`,
+                  color: "#fff",
+                  fontFamily: SANS,
+                  fontSize: 14,
+                  fontWeight: 600,
+                  letterSpacing: -0.2,
+                  boxShadow: "0 8px 18px -8px rgba(220,76,62,0.5)",
+                }}
+              >
+                {t(lang, "mode_open_a_tab")} 🍅
+              </button>
+              <button
+                type="button"
+                onClick={() => nav("/signin")}
+                style={{
+                  height: 42,
+                  padding: "0 14px",
+                  borderRadius: 12,
+                  border: `1px solid ${HAIR}`,
+                  background: "#fff",
+                  cursor: "pointer",
+                  fontFamily: SANS,
+                  fontSize: 13.5,
+                  fontWeight: 500,
+                  color: INK_2,
+                }}
+              >
+                {t(lang, "auth_sign_in")}
+              </button>
+            </div>
+          </div>
+        )}
         {loading && (
           <div style={{ fontFamily: MONO, fontSize: 12, color: INK_3, padding: 20 }}>
             loading…
