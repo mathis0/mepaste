@@ -29,10 +29,15 @@ _MAX_SLUG_RETRIES = 6
 
 
 def _expires_at(kind: ExpiresIn) -> datetime | None:
+    now = datetime.now(timezone.utc)
+    if kind == "10m":
+        return now + timedelta(minutes=10)
     if kind == "1h":
-        return datetime.now(timezone.utc) + timedelta(hours=1)
+        return now + timedelta(hours=1)
     if kind == "1d":
-        return datetime.now(timezone.utc) + timedelta(days=1)
+        return now + timedelta(days=1)
+    if kind == "1w":
+        return now + timedelta(weeks=1)
     return None
 
 
