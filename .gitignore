@@ -1,0 +1,23 @@
+## python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+
+## node
+node_modules/
+dist/
+.vite/
+
+## env / editors
+.env
+.env.local
+*.local
+.DS_Store
+.idea/
+.vscode/
+
+## misc
+*.log
+ca-certificates.crt
