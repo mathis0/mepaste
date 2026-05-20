@@ -20,7 +20,6 @@ import {
 } from "../theme";
 import { ExpiresIn, Visibility } from "../api";
 import { Lang, t } from "../i18n";
-import { Mode } from "../auth";
 
 export type SheetOpts = {
   visibility: Visibility;
@@ -35,14 +34,11 @@ type Props = {
   onClose: () => void;
   onPublish: () => void;
   lang: Lang;
-  mode?: Mode;
-  onPrivateRequiresAccount?: () => void;
 };
 
 const EXPIRY_OPTIONS: ExpiresIn[] = ["10m", "1h", "1d", "1w", "never"];
 const VIS_OPTIONS: { id: Visibility; icon: string }[] = [
   { id: "public", icon: I.globe },
-  { id: "unlisted", icon: I.eye },
   { id: "private", icon: I.lock },
 ];
 
@@ -57,20 +53,10 @@ export function expiryLabel(lang: Lang, e: ExpiresIn): string {
 }
 
 function visDesc(lang: Lang, v: Visibility): string {
-  return v === "public" ? t(lang, "desc_public")
-    : v === "unlisted" ? t(lang, "desc_unlisted")
-    : t(lang, "desc_private");
+  return v === "public" ? t(lang, "desc_public") : t(lang, "desc_private");
 }
 
-export function PasteOptionsSheet({
-  opts,
-  onChange,
-  onClose,
-  onPublish,
-  lang,
-  mode = "anon",
-  onPrivateRequiresAccount,
-}: Props) {
+export function PasteOptionsSheet({ opts, onChange, onClose, onPublish, lang }: Props) {
   return (
     <>
       <div
@@ -135,26 +121,17 @@ export function PasteOptionsSheet({
 
         <div style={{ padding: "0 16px", display: "flex", flexDirection: "column", gap: 12 }}>
           <SheetSection label={t(lang, "sheet_who")}>
-            {VIS_OPTIONS.map((o, i) => {
-              const isPrivate = o.id === "private";
-              const locked = isPrivate && mode === "anon";
-              return (
-                <SheetRow
-                  key={o.id}
-                  icon={o.icon}
-                  title={t(lang, o.id)}
-                  detail={visDesc(lang, o.id)}
-                  selected={opts.visibility === o.id}
-                  locked={locked}
-                  lockedLabel={t(lang, "mode_tab_only")}
-                  onClick={() => {
-                    if (locked) onPrivateRequiresAccount?.();
-                    else onChange({ visibility: o.id });
-                  }}
-                  last={i === VIS_OPTIONS.length - 1}
-                />
-              );
-            })}
+            {VIS_OPTIONS.map((o, i) => (
+              <SheetRow
+                key={o.id}
+                icon={o.icon}
+                title={t(lang, o.id)}
+                detail={visDesc(lang, o.id)}
+                selected={opts.visibility === o.id}
+                onClick={() => onChange({ visibility: o.id })}
+                last={i === VIS_OPTIONS.length - 1}
+              />
+            ))}
           </SheetSection>
 
           <SheetSection label={t(lang, "sheet_how_long")}>
@@ -196,7 +173,7 @@ export function PasteOptionsSheet({
                           fontWeight: 700,
                         }}
                       >
-                        {t(lang, "default_badge")}
+                        {t(lang, "exp_default")}
                       </span>
                     )}
                   </button>
@@ -312,8 +289,6 @@ type RowProps = {
   accent?: string;
   onClick?: () => void;
   last?: boolean;
-  locked?: boolean;
-  lockedLabel?: string;
 };
 
 function SheetRow({
@@ -326,8 +301,6 @@ function SheetRow({
   accent = TEAL,
   onClick,
   last = false,
-  locked = false,
-  lockedLabel,
 }: RowProps) {
   return (
     <div
@@ -340,7 +313,6 @@ function SheetRow({
         borderBottom: last ? "none" : `1px solid ${HAIR}`,
         background: selected ? TEAL_TINT : "transparent",
         cursor: "pointer",
-        opacity: locked ? 0.7 : 1,
       }}
     >
       <div
@@ -362,40 +334,8 @@ function SheetRow({
         <Icon d={icon} s={16} c={selected ? "#fff" : accent} sw={2} />
       </div>
       <div style={{ flex: 1, minWidth: 0 }}>
-        <div
-          style={{
-            display: "flex",
-            alignItems: "center",
-            gap: 6,
-            fontSize: 15,
-            fontWeight: 600,
-            color: INK,
-            letterSpacing: -0.2,
-          }}
-        >
-          <span>{title}</span>
-          {locked && (
-            <span
-              style={{
-                display: "inline-flex",
-                alignItems: "center",
-                gap: 3,
-                fontFamily: "JetBrains Mono, ui-monospace, monospace",
-                fontSize: 9,
-                color: "#6e9b56",
-                letterSpacing: 1,
-                textTransform: "uppercase",
-                fontWeight: 700,
-                padding: "2px 5px",
-                borderRadius: 4,
-                border: "1px dashed rgba(110,155,86,0.4)",
-                background: "rgba(110,155,86,0.08)",
-              }}
-            >
-              <Icon d={I.lock} s={9} c="#6e9b56" sw={2.5} />
-              {lockedLabel ?? "tab only"}
-            </span>
-          )}
+        <div style={{ fontSize: 15, fontWeight: 600, color: INK, letterSpacing: -0.2 }}>
+          {title}
         </div>
         {detail && (
           <div style={{ fontSize: 12, color: INK_3, marginTop: 1 }}>{detail}</div>

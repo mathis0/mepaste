@@ -5,7 +5,7 @@ from typing import Literal
 
 from pydantic import BaseModel, Field
 
-Visibility = Literal["public", "unlisted", "private"]
+Visibility = Literal["public", "private"]
 ExpiresIn = Literal["10m", "1h", "1d", "1w", "never"]
 
 

@@ -1,8 +1,11 @@
+import { useState } from "react";
 import { Icon } from "./Icon";
 import { I } from "../icons";
 import {
   HAIR,
   INK,
+  INK_2,
+  INK_3,
   MONO,
   PEACH,
   SANS,
@@ -11,27 +14,37 @@ import {
   TEAL_TINT,
 } from "../theme";
 import { useLang, t } from "../i18n";
-import { Mode } from "../auth";
+import { ExpiresIn } from "../api";
+import { expiryLabel } from "./PasteOptionsSheet";
 
 type Props = {
   url: string;
   onReset: () => void;
   onOpen: () => void;
-  mode?: Mode;
-  onOpenTab?: () => void;
+  expiresIn: ExpiresIn;
 };
 
-export function PublishToast({ url, onReset, onOpen, mode = "anon", onOpenTab }: Props) {
+function expiryFooterTitle(lang: ReturnType<typeof useLang>, e: ExpiresIn): string {
+  if (e === "never") return "this paste sticks around · no expiry.";
+  return `ripens for ${expiryLabel(lang, e)}, then it's gone.`;
+}
+
+export function PublishToast({ url, onReset, onOpen, expiresIn }: Props) {
   const lang = useLang();
+  const [copied, setCopied] = useState(false);
+
   const handleCopy = () => {
-    const fullUrl = `${window.location.origin}${url.startsWith("/") ? url : "/" + url.split("/").slice(-2).join("/")}`;
+    const fullUrl = `${window.location.origin}${url.startsWith("/") ? url : "/p/" + url.split("/").slice(-1)[0]}`;
     navigator.clipboard?.writeText(fullUrl).catch(() => {});
+    setCopied(true);
+    setTimeout(() => setCopied(false), 1500);
   };
+
   return (
     <div
       style={{
         position: "absolute",
-        top: 196,
+        top: 156,
         left: 24,
         right: 24,
         background: "#fff",
@@ -110,57 +123,34 @@ export function PublishToast({ url, onReset, onOpen, mode = "anon", onOpenTab }:
             cursor: "pointer",
           }}
         >
-          {t(lang, "copy")}
+          {copied ? "✓" : t(lang, "copy")}
         </button>
       </div>
-      {mode === "anon" && (
-        <button
-          type="button"
-          onClick={onOpenTab}
-          style={{
-            marginTop: 10,
-            width: "100%",
-            padding: "10px 12px",
-            borderRadius: 12,
-            background: "rgba(110,155,86,0.10)",
-            border: "1px dashed rgba(110,155,86,0.35)",
-            display: "flex",
-            alignItems: "center",
-            gap: 10,
-            cursor: "pointer",
-            textAlign: "left",
-            fontFamily: SANS,
-          }}
-        >
-          <span style={{ fontSize: 20 }}>🌱</span>
-          <div style={{ flex: 1 }}>
-            <div style={{ fontFamily: MONO, fontSize: 10, color: PEACH, letterSpacing: 1.2, textTransform: "uppercase", fontWeight: 700 }}>
-              {t(lang, "toast_anon_upsell_title")}
-            </div>
-            <div style={{ marginTop: 1, fontSize: 12, color: "#3a2e28", lineHeight: "16px" }}>
-              {t(lang, "toast_anon_upsell_body")}
-            </div>
+
+      {/* expiry footer — honest about what happens next */}
+      <div
+        style={{
+          marginTop: 12,
+          padding: "10px 12px",
+          borderRadius: 11,
+          background: "rgba(110,155,86,0.08)",
+          border: "1px dashed rgba(110,155,86,0.35)",
+          display: "flex",
+          alignItems: "center",
+          gap: 10,
+        }}
+      >
+        <span style={{ fontSize: 16 }}>⏳</span>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ fontSize: 12.5, fontWeight: 600, color: INK, letterSpacing: -0.1 }}>
+            {expiryFooterTitle(lang, expiresIn)}
           </div>
-          <span style={{ fontSize: 12, color: PEACH, fontWeight: 700 }}>{t(lang, "mode_open_a_tab")} →</span>
-        </button>
-      )}
-      {mode === "user" && (
-        <div
-          style={{
-            marginTop: 10,
-            padding: "6px 10px",
-            display: "flex",
-            alignItems: "center",
-            gap: 6,
-            fontFamily: MONO,
-            fontSize: 11,
-            color: PEACH,
-          }}
-        >
-          <Icon d={I.check} s={12} c={PEACH} sw={2.5} />
-          <span>{t(lang, "toast_user_saved")}</span>
+          <div style={{ fontSize: 11, color: INK_3, marginTop: 1, fontFamily: MONO }}>
+            {t(lang, "toast_expiry_sub")}
+          </div>
         </div>
-      )}
+      </div>
+
       <div style={{ marginTop: 10, display: "flex", gap: 8 }}>
         <button
           type="button"
@@ -175,7 +165,7 @@ export function PublishToast({ url, onReset, onOpen, mode = "anon", onOpenTab }:
             fontFamily: SANS,
             fontSize: 13,
             fontWeight: 500,
-            color: "#3a2e28",
+            color: INK_2,
           }}
         >
           {t(lang, "smash_another")}

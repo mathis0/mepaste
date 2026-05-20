@@ -14,10 +14,8 @@ RUN pip install --no-cache-dir \
       "asyncpg>=0.29" \
       "alembic>=1.13" \
       "pydantic>=2.6" \
-      "email-validator>=2.0" \
       "passlib[bcrypt]>=1.7.4" \
-      "bcrypt==4.0.1" \
-      "pyjwt>=2.8"
+      "bcrypt==4.0.1"
 
 COPY . .
 

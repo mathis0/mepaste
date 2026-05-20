@@ -1,7 +1,7 @@
 [project]
 name = "mepaste-backend"
-version = "0.4.2"
-description = "mepaste — one person, one textarea, one short link."
+version = "0.5.0"
+description = "mepaste — anonymous, one-shot pastebin."
 requires-python = ">=3.12"
 dependencies = [
   "fastapi>=0.110",
@@ -10,8 +10,6 @@ dependencies = [
   "asyncpg>=0.29",
   "alembic>=1.13",
   "pydantic>=2.6",
-  "email-validator>=2.0",
   "passlib[bcrypt]>=1.7.4",
   "bcrypt==4.0.1",
-  "pyjwt>=2.8",
 ]
