@@ -27,8 +27,9 @@ import {
   WARN,
 } from "../../theme";
 import { ApiError, createPaste, ExpiresIn, Visibility } from "../../api";
-import { Lang, t, useLang } from "../../i18n";
+import { t, useLang } from "../../i18n";
 import { expiryLabel } from "../../components/PasteOptionsSheet";
+import { useAuth } from "../../auth";
 
 type State = "idle" | "smashing" | "done";
 
@@ -53,6 +54,7 @@ export function DesktopCreateScreen() {
   const isFa = lang === "fa";
   const dir: "rtl" | "ltr" = isFa ? "rtl" : "ltr";
   const nav = useNavigate();
+  const { mode, user } = useAuth();
 
   const init = useMemo(defaults, []);
   const [state, setState] = useState<State>("idle");
@@ -89,7 +91,12 @@ export function DesktopCreateScreen() {
       setTimeout(() => setState("done"), 2000);
     } catch (e) {
       const err = e as ApiError;
-      setError(err?.body?.detail?.message ?? err?.message ?? "something went wrong");
+      if (err?.status === 403 && err?.body?.detail === "private_requires_account") {
+        setState("idle");
+        nav("/signup");
+        return;
+      }
+      setError(err?.body?.detail?.message ?? err?.body?.detail ?? err?.message ?? "something went wrong");
       setState("idle");
     }
   };
@@ -343,11 +350,12 @@ export function DesktopCreateScreen() {
             <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
               {VIS_OPTIONS.map((o) => {
                 const active = visibility === o.id;
+                const locked = o.id === "private" && mode === "anon";
                 return (
                   <button
                     key={o.id}
                     type="button"
-                    onClick={() => setVisibility(o.id)}
+                    onClick={() => locked ? nav("/signup") : setVisibility(o.id)}
                     style={{
                       display: "flex",
                       alignItems: "center",
@@ -360,12 +368,35 @@ export function DesktopCreateScreen() {
                       width: "100%",
                       textAlign: isFa ? "right" : "left",
                       fontFamily: "inherit",
+                      opacity: locked ? 0.7 : 1,
                     }}
                   >
                     <Icon d={o.icon} s={16} c={active ? TEAL : INK_3} sw={active ? 2 : 1.6} />
                     <div style={{ flex: 1 }}>
-                      <div style={{ fontSize: 13.5, fontWeight: 600, color: active ? TEAL : INK_2 }}>
-                        {t(lang, o.id)}
+                      <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 13.5, fontWeight: 600, color: active ? TEAL : INK_2 }}>
+                        <span>{t(lang, o.id)}</span>
+                        {locked && (
+                          <span
+                            style={{
+                              display: "inline-flex",
+                              alignItems: "center",
+                              gap: 3,
+                              fontFamily: MONO,
+                              fontSize: 9,
+                              color: PEACH,
+                              letterSpacing: 1,
+                              textTransform: "uppercase",
+                              fontWeight: 700,
+                              padding: "1px 5px",
+                              borderRadius: 4,
+                              border: "1px dashed rgba(110,155,86,0.4)",
+                              background: "rgba(110,155,86,0.08)",
+                            }}
+                          >
+                            <Icon d={I.lock} s={9} c={PEACH} sw={2.5} />
+                            {t(lang, "mode_tab_only")}
+                          </span>
+                        )}
                       </div>
                       <div style={{ fontSize: 11.5, color: INK_3 }}>
                         {t(lang, ("desc_" + o.id) as any)}
@@ -548,6 +579,8 @@ export function DesktopCreateScreen() {
             url={resultUrl}
             onReset={reset}
             onOpen={() => nav(`/p/${resultSlug}`)}
+            mode={mode}
+            onOpenTab={() => nav("/signup")}
           />
         )}
       </div>

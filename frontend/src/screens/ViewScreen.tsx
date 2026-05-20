@@ -46,7 +46,7 @@ function humanizeWilt(expiresAt: string | null, lang: "en" | "fa"): string {
   return `wilts in ${mins}m`;
 }
 
-export function ViewScreen() {
+export function ViewScreen({ passwordOverride }: { passwordOverride?: string | null } = {}) {
   const { slug } = useParams<{ slug: string }>();
   const nav = useNavigate();
   const lang = useLang();
@@ -54,25 +54,18 @@ export function ViewScreen() {
   const [paste, setPaste] = useState<Paste | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<"wilted" | "burned" | "not_found" | "other" | null>(null);
-  const [needsPassword, setNeedsPassword] = useState(false);
-  const [pwInput, setPwInput] = useState("");
-  const [pwError, setPwError] = useState(false);
   const [copied, setCopied] = useState(false);
 
-  const load = async (password?: string) => {
+  const load = async () => {
     if (!slug) return;
     setLoading(true);
     setError(null);
     try {
-      const p = await getPaste(slug, password);
+      const p = await getPaste(slug, passwordOverride ?? undefined);
       setPaste(p);
-      setNeedsPassword(false);
     } catch (e) {
       const err = e as ApiError;
-      if (err.status === 401 && err.body?.detail?.password_required) {
-        setNeedsPassword(true);
-        if (password) setPwError(true);
-      } else if (err.status === 410) {
+      if (err.status === 410) {
         const reason = err.body?.detail?.reason;
         setError(reason === "burned" ? "burned" : "wilted");
       } else if (err.status === 404) {
@@ -85,7 +78,7 @@ export function ViewScreen() {
     }
   };
 
-  useEffect(() => { load(); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [slug]);
+  useEffect(() => { load(); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [slug, passwordOverride]);
 
   const handleCopyLink = async () => {
     try {
@@ -154,69 +147,6 @@ export function ViewScreen() {
           }}
         >
           loading…
-        </div>
-      </AppFrame>
-    );
-  }
-
-  if (needsPassword) {
-    return (
-      <AppFrame>
-        {renderHeader()}
-        <div
-          style={{
-            position: "absolute", top: 110, left: 16, right: 16,
-            background: CARD, borderRadius: 18, border: `1px solid ${HAIR}`,
-            padding: "22px 18px",
-            boxShadow: "0 1px 0 rgba(0,0,0,0.02), 0 24px 60px -32px rgba(220,76,62,0.2)",
-          }}
-        >
-          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-            <Icon d={I.lock} s={20} c={TEAL} sw={2} />
-            <div style={{ fontSize: 16, fontWeight: 700, color: INK }}>
-              {t(lang, "this_one_needs_password")}
-            </div>
-          </div>
-          <input
-            type="password"
-            value={pwInput}
-            onChange={(e) => { setPwInput(e.target.value); setPwError(false); }}
-            placeholder={t(lang, "password")}
-            autoFocus
-            onKeyDown={(e) => { if (e.key === "Enter") load(pwInput); }}
-            style={{
-              marginTop: 14,
-              width: "100%",
-              height: 40,
-              padding: "0 12px",
-              borderRadius: 10,
-              border: `1px solid ${pwError ? "#c0392b" : HAIR}`,
-              background: "#fff",
-              outline: "none",
-              fontFamily: MONO,
-              fontSize: 14,
-            }}
-          />
-          <button
-            type="button"
-            onClick={() => load(pwInput)}
-            style={{
-              marginTop: 12,
-              width: "100%",
-              height: 44,
-              borderRadius: 12,
-              border: "none",
-              cursor: "pointer",
-              background: `linear-gradient(180deg, ${TEAL} 0%, #b53a2e 100%)`,
-              color: "#fff",
-              fontFamily: SANS,
-              fontSize: 15,
-              fontWeight: 600,
-              boxShadow: "0 8px 18px -8px rgba(220,76,62,0.5)",
-            }}
-          >
-            {t(lang, "unlock")}
-          </button>
         </div>
       </AppFrame>
     );

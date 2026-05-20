@@ -1,4 +1,5 @@
 import { ReactNode, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { AppFrame } from "../components/AppFrame";
 import { BrandMark } from "../components/BrandMark";
 import { Icon } from "../components/Icon";
@@ -10,16 +11,19 @@ import {
   INK,
   INK_2,
   INK_3,
+  INK_4,
   MONO,
   PEACH,
   SANS,
   TEAL,
   TEAL_BORDER,
+  TEAL_DARK,
   TEAL_TINT,
   WARN,
 } from "../theme";
-import { Lang, setLang, t, useLang } from "../i18n";
+import { setLang, t, useLang } from "../i18n";
 import { ExpiresIn, Visibility } from "../api";
+import { useAuth } from "../auth";
 
 function readDefault<T extends string>(key: string, fallback: T): T {
   const v = localStorage.getItem(key) as T | null;
@@ -28,6 +32,8 @@ function readDefault<T extends string>(key: string, fallback: T): T {
 
 export function SettingsScreen() {
   const lang = useLang();
+  const nav = useNavigate();
+  const { mode, user, signOut } = useAuth();
   const [vis, setVis] = useState<Visibility>(readDefault("mp_default_visibility", "public"));
   const [exp, setExp] = useState<ExpiresIn>(readDefault("mp_default_expires", "1d"));
   const [burn, setBurn] = useState<boolean>(localStorage.getItem("mp_default_burn") === "1");
@@ -96,82 +102,209 @@ export function SettingsScreen() {
           padding: "8px 0 24px",
         }}
       >
-        {/* manifesto card */}
-        <div
-          style={{
-            margin: "4px 16px 6px",
-            padding: "14px 16px 16px",
-            borderRadius: 14,
-            background: "#fff",
-            border: `1px solid ${HAIR}`,
-            backgroundImage:
-              "radial-gradient(circle at 10px 10px, rgba(220,76,62,0.05) 1px, transparent 1px)",
-            backgroundSize: "18px 18px",
-            position: "relative",
-          }}
-        >
-          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-            <BrandMark size={22} />
-            <span
+        {mode === "user" ? (
+          <>
+            <div
               style={{
-                fontFamily: MONO,
-                fontSize: 11,
-                fontWeight: 700,
-                color: TEAL,
-                textTransform: "uppercase",
-                letterSpacing: 1.4,
+                margin: "4px 16px 6px",
+                padding: "14px 16px 16px",
+                borderRadius: 14,
+                background: "#fff",
+                border: `1px solid ${HAIR}`,
+                backgroundImage:
+                  "radial-gradient(circle at 10px 10px, rgba(220,76,62,0.05) 1px, transparent 1px)",
+                backgroundSize: "18px 18px",
+                position: "relative",
               }}
             >
-              {t(lang, "settings_what_is")}
-            </span>
-          </div>
-          <p
-            style={{
-              margin: "10px 0 0",
-              fontSize: 13.5,
-              lineHeight: "20px",
-              color: INK_2,
-              letterSpacing: -0.1,
-              whiteSpace: "pre-line",
-            }}
-          >
-            {t(lang, "settings_manifesto")}
-          </p>
-          <div style={{ marginTop: 10, fontFamily: MONO, fontSize: 11, color: INK_3 }}>
-            {t(lang, "settings_signature").replace("tehran", "").trim()}{" "}
-            <span style={{ color: PEACH }}>
-              {lang === "fa" ? "تهران" : "tehran"}
-            </span>
-          </div>
-          <div style={{ position: "absolute", top: -10, right: 14 }}>
-            <Stamp
-              color={WARN}
-              rotate={6}
-              style={{ fontSize: 9, padding: "3px 7px 2px", letterSpacing: 1.2 }}
+              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                <BrandMark size={22} />
+                <span
+                  style={{
+                    fontFamily: MONO,
+                    fontSize: 11,
+                    fontWeight: 700,
+                    color: TEAL,
+                    textTransform: "uppercase",
+                    letterSpacing: 1.4,
+                  }}
+                >
+                  {t(lang, "settings_what_is")}
+                </span>
+              </div>
+              <p
+                style={{
+                  margin: "10px 0 0",
+                  fontSize: 13.5,
+                  lineHeight: "20px",
+                  color: INK_2,
+                  letterSpacing: -0.1,
+                  whiteSpace: "pre-line",
+                }}
+              >
+                {t(lang, "settings_manifesto")}
+              </p>
+              <div style={{ marginTop: 10, fontFamily: MONO, fontSize: 11, color: INK_3 }}>
+                {t(lang, "settings_signature").replace("tehran", "").trim()}{" "}
+                <span style={{ color: PEACH }}>{lang === "fa" ? "تهران" : "tehran"}</span>
+              </div>
+              <div style={{ position: "absolute", top: -10, right: 14 }}>
+                <Stamp
+                  color={WARN}
+                  rotate={6}
+                  style={{ fontSize: 9, padding: "3px 7px 2px", letterSpacing: 1.2 }}
+                >
+                  v0.4 · batch #042
+                </Stamp>
+              </div>
+            </div>
+
+            <SectionLabel>{t(lang, "profile")}</SectionLabel>
+            <Group>
+              <Row
+                left={<Avatar />}
+                title={user?.name || user?.email?.split("@")[0] || "you"}
+                detail={user?.email ?? ""}
+                big
+                last
+              />
+            </Group>
+
+            <SectionLabel>{t(lang, "defaults_section")}</SectionLabel>
+            <Group>
+              <Row icon={I.globe} title={t(lang, "who_can_see")} detail={visLabel} onClick={cycleVisibility} />
+              <Row icon={I.clock} title={t(lang, "how_long_ripens")} detail={expLabel} onClick={cycleExp} />
+              <Row icon={I.flame} title={t(lang, "burn_after_read")} toggle on={burn} onClick={toggleBurn} />
+              <Row icon={I.raw} title={t(lang, "colour_the_code")} toggle on={colour} onClick={toggleColour} last />
+            </Group>
+          </>
+        ) : (
+          <>
+            <div
+              style={{
+                margin: "4px 16px 6px",
+                padding: "16px 18px",
+                borderRadius: 16,
+                background: "#fff",
+                border: `1px solid ${HAIR}`,
+                backgroundImage:
+                  "radial-gradient(circle at 12px 12px, rgba(220,76,62,0.05) 1.2px, transparent 1.2px)",
+                backgroundSize: "18px 18px",
+                position: "relative",
+                boxShadow: "0 16px 36px -28px rgba(80,40,20,0.25)",
+              }}
             >
-              v0.4 · batch #042
-            </Stamp>
-          </div>
-        </div>
-
-        <SectionLabel>{t(lang, "profile")}</SectionLabel>
-        <Group>
-          <Row left={<Avatar />} title="nima" detail="nima@mepaste.to · since paste #1" big last />
-        </Group>
-
-        <SectionLabel>{t(lang, "defaults_section")}</SectionLabel>
-        <Group>
-          <Row icon={I.globe} title={t(lang, "who_can_see")} detail={visLabel} onClick={cycleVisibility} />
-          <Row icon={I.clock} title={t(lang, "how_long_ripens")} detail={expLabel} onClick={cycleExp} />
-          <Row icon={I.flame} title={t(lang, "burn_after_read")} toggle on={burn} onClick={toggleBurn} />
-          <Row icon={I.raw} title={t(lang, "colour_the_code")} toggle on={colour} onClick={toggleColour} last />
-        </Group>
+              <div style={{ position: "absolute", top: -10, right: 14 }}>
+                <Stamp
+                  color={TEAL}
+                  rotate={6}
+                  style={{ fontSize: 9, padding: "3px 7px 2px", letterSpacing: 1.2 }}
+                >
+                  {t(lang, "mode_anonymous")}
+                </Stamp>
+              </div>
+              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                <BrandMark size={20} />
+                <span
+                  style={{
+                    fontFamily: MONO,
+                    fontSize: 11,
+                    fontWeight: 700,
+                    color: TEAL,
+                    letterSpacing: 1.4,
+                    textTransform: "uppercase",
+                  }}
+                >
+                  {t(lang, "mode_open_a_tab")}
+                </span>
+              </div>
+              <div
+                style={{
+                  marginTop: 6,
+                  fontSize: 17,
+                  fontWeight: 700,
+                  color: INK,
+                  letterSpacing: -0.3,
+                  lineHeight: "22px",
+                }}
+              >
+                {t(lang, "anon_settings_open_tab_title")}
+              </div>
+              <div style={{ marginTop: 4, fontSize: 12.5, color: INK_3, lineHeight: "18px" }}>
+                {t(lang, "anon_settings_open_tab_sub")}
+              </div>
+              <div style={{ marginTop: 12, display: "flex", gap: 8 }}>
+                <button
+                  type="button"
+                  onClick={() => nav("/signup")}
+                  style={{
+                    flex: 1,
+                    height: 38,
+                    borderRadius: 10,
+                    border: "none",
+                    cursor: "pointer",
+                    background: `linear-gradient(180deg, ${TEAL} 0%, ${TEAL_DARK} 100%)`,
+                    color: "#fff",
+                    fontFamily: SANS,
+                    fontSize: 13.5,
+                    fontWeight: 600,
+                    boxShadow: "0 6px 14px -6px rgba(220,76,62,0.55)",
+                  }}
+                >
+                  {t(lang, "mode_open_a_tab")}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => nav("/signin")}
+                  style={{
+                    flex: 1,
+                    height: 38,
+                    borderRadius: 10,
+                    border: `1px solid ${HAIR}`,
+                    background: "#fff",
+                    cursor: "pointer",
+                    fontFamily: SANS,
+                    fontSize: 13.5,
+                    fontWeight: 500,
+                    color: INK_2,
+                  }}
+                >
+                  {t(lang, "auth_sign_in")}
+                </button>
+              </div>
+            </div>
+          </>
+        )}
 
         <SectionLabel>{t(lang, "look_feel")}</SectionLabel>
         <Group>
           <Row icon={I.sun} title={t(lang, "theme")} detail="system" />
           <Row icon={I.globe} title={t(lang, "language")} detail={lang === "fa" ? "فارسی · english" : "english · فارسی"} onClick={toggleLang} last />
         </Group>
+
+        {mode === "anon" && (
+          <>
+            <SectionLabel>{t(lang, "anon_settings_locked_section")}</SectionLabel>
+            <Group>
+              <LockedRow
+                icon={I.user}
+                title={t(lang, "anon_settings_lock_profile")}
+                detail={t(lang, "anon_settings_lock_profile_detail")}
+              />
+              <LockedRow
+                icon={I.raw}
+                title={t(lang, "anon_settings_lock_defaults")}
+                detail={t(lang, "anon_settings_lock_defaults_detail")}
+              />
+              <LockedRow
+                icon={I.bell}
+                title={t(lang, "anon_settings_lock_guestbook")}
+                detail={t(lang, "anon_settings_lock_guestbook_detail")}
+                last
+              />
+            </Group>
+          </>
+        )}
 
         {/* three promises */}
         <div
@@ -222,7 +355,20 @@ export function SettingsScreen() {
           <Row icon={I.info} title={t(lang, "current_vintage")} detail={t(lang, "vintage_value")} />
           <Row icon={I.flask} title={t(lang, "changelog")} detail={t(lang, "changelog_value")} />
           <Row icon={I.link} title={t(lang, "peek_source")} detail={t(lang, "github")} />
-          <Row icon={I.bell} title={t(lang, "guestbook")} detail={t(lang, "guestbook_value")} last />
+          {mode === "user" ? (
+            <Row
+              icon={I.user}
+              title="sign out"
+              detail={user?.email ?? ""}
+              onClick={() => {
+                void signOut();
+                nav("/");
+              }}
+              last
+            />
+          ) : (
+            <Row icon={I.bell} title={t(lang, "guestbook")} detail={t(lang, "guestbook_value")} last />
+          )}
         </Group>
 
         {/* visitor counter */}
@@ -398,6 +544,74 @@ function Row({ icon, left, title, detail, toggle, on, onClick, last, big }: RowP
     return <button type="button" onClick={onClick} style={baseStyle}>{content}</button>;
   }
   return <div style={baseStyle}>{content}</div>;
+}
+
+function LockedRow({
+  icon,
+  title,
+  detail,
+  last = false,
+}: {
+  icon: string;
+  title: string;
+  detail?: string;
+  last?: boolean;
+}) {
+  return (
+    <div
+      style={{
+        display: "flex",
+        alignItems: "center",
+        minHeight: 48,
+        padding: "0 14px",
+        borderBottom: last ? "none" : `1px solid ${HAIR}`,
+        gap: 12,
+        opacity: 0.7,
+      }}
+    >
+      <div
+        style={{
+          width: 28,
+          height: 28,
+          borderRadius: 7,
+          background: "rgba(70,40,30,0.06)",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+        }}
+      >
+        <Icon d={icon} s={16} c={INK_3} sw={2} />
+      </div>
+      <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: 1 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+          <span style={{ fontSize: 15, fontWeight: 500, color: INK_2, letterSpacing: -0.2 }}>
+            {title}
+          </span>
+          <span
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              gap: 3,
+              fontFamily: MONO,
+              fontSize: 9,
+              color: PEACH,
+              letterSpacing: 1,
+              textTransform: "uppercase",
+              fontWeight: 700,
+              padding: "2px 5px",
+              borderRadius: 4,
+              border: "1px dashed rgba(110,155,86,0.4)",
+              background: "rgba(110,155,86,0.08)",
+            }}
+          >
+            <Icon d={I.lock} s={9} c={PEACH} sw={2.5} /> tab only
+          </span>
+        </div>
+        {detail && <span style={{ fontSize: 12.5, color: INK_4 }}>{detail}</span>}
+      </div>
+      <Icon d={I.chev} s={14} c={INK_4} sw={2.2} />
+    </div>
+  );
 }
 
 function Toggle({ on }: { on: boolean }) {

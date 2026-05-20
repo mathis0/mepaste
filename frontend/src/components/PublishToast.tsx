@@ -11,14 +11,17 @@ import {
   TEAL_TINT,
 } from "../theme";
 import { useLang, t } from "../i18n";
+import { Mode } from "../auth";
 
 type Props = {
   url: string;
   onReset: () => void;
   onOpen: () => void;
+  mode?: Mode;
+  onOpenTab?: () => void;
 };
 
-export function PublishToast({ url, onReset, onOpen }: Props) {
+export function PublishToast({ url, onReset, onOpen, mode = "anon", onOpenTab }: Props) {
   const lang = useLang();
   const handleCopy = () => {
     const fullUrl = `${window.location.origin}${url.startsWith("/") ? url : "/" + url.split("/").slice(-2).join("/")}`;
@@ -110,6 +113,54 @@ export function PublishToast({ url, onReset, onOpen }: Props) {
           {t(lang, "copy")}
         </button>
       </div>
+      {mode === "anon" && (
+        <button
+          type="button"
+          onClick={onOpenTab}
+          style={{
+            marginTop: 10,
+            width: "100%",
+            padding: "10px 12px",
+            borderRadius: 12,
+            background: "rgba(110,155,86,0.10)",
+            border: "1px dashed rgba(110,155,86,0.35)",
+            display: "flex",
+            alignItems: "center",
+            gap: 10,
+            cursor: "pointer",
+            textAlign: "left",
+            fontFamily: SANS,
+          }}
+        >
+          <span style={{ fontSize: 20 }}>🌱</span>
+          <div style={{ flex: 1 }}>
+            <div style={{ fontFamily: MONO, fontSize: 10, color: PEACH, letterSpacing: 1.2, textTransform: "uppercase", fontWeight: 700 }}>
+              {t(lang, "toast_anon_upsell_title")}
+            </div>
+            <div style={{ marginTop: 1, fontSize: 12, color: "#3a2e28", lineHeight: "16px" }}>
+              {t(lang, "toast_anon_upsell_body")}
+            </div>
+          </div>
+          <span style={{ fontSize: 12, color: PEACH, fontWeight: 700 }}>{t(lang, "mode_open_a_tab")} →</span>
+        </button>
+      )}
+      {mode === "user" && (
+        <div
+          style={{
+            marginTop: 10,
+            padding: "6px 10px",
+            display: "flex",
+            alignItems: "center",
+            gap: 6,
+            fontFamily: MONO,
+            fontSize: 11,
+            color: PEACH,
+          }}
+        >
+          <Icon d={I.check} s={12} c={PEACH} sw={2.5} />
+          <span>{t(lang, "toast_user_saved")}</span>
+        </div>
+      )}
       <div style={{ marginTop: 10, display: "flex", gap: 8 }}>
         <button
           type="button"

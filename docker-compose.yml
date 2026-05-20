@@ -23,6 +23,7 @@ services:
     environment:
       DATABASE_URL: ${DATABASE_URL:-postgresql+asyncpg://mepaste:mepaste@db:5432/mepaste}
       CORS_ORIGIN: ${CORS_ORIGIN:-http://localhost:5173}
+      JWT_SECRET: ${JWT_SECRET:-dev-only-secret-please-change}
     ports:
       - "8000:8000"
     volumes:
