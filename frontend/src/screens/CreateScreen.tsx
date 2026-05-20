@@ -25,28 +25,41 @@ import {
 } from "../theme";
 import { createPaste, ApiError, ExpiresIn, Visibility } from "../api";
 import { useLang, t } from "../i18n";
-import { useAuth } from "../auth";
 
 type State = "idle" | "smashing" | "done";
 
-function loadDefaults(): SheetOpts {
-  const v = (localStorage.getItem("mp_default_visibility") as Visibility) || "public";
-  const e = (localStorage.getItem("mp_default_expires") as ExpiresIn) || "1d";
-  const burn = localStorage.getItem("mp_default_burn") === "1";
-  return { visibility: v, expires: e, burn, password: false };
-}
+const DEFAULTS: SheetOpts = {
+  visibility: "public",
+  expires: "1d",
+  burn: false,
+  password: false,
+};
+
+const iconBtn: React.CSSProperties = {
+  width: 32,
+  height: 32,
+  borderRadius: 999,
+  background: "rgba(255,255,255,0.7)",
+  border: `1px solid ${HAIR}`,
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "center",
+  backdropFilter: "blur(10px)",
+  WebkitBackdropFilter: "blur(10px)",
+  padding: 0,
+  cursor: "pointer",
+};
 
 export function CreateScreen() {
   const lang = useLang();
   const isFa = lang === "fa";
   const nav = useNavigate();
-  const { mode, user } = useAuth();
 
   const [state, setState] = useState<State>("idle");
   const [title, setTitle] = useState("");
   const [content, setContent] = useState("");
   const [sheetOpen, setSheetOpen] = useState(false);
-  const [opts, setOpts] = useState<SheetOpts>(useMemo(loadDefaults, []));
+  const [opts, setOpts] = useState<SheetOpts>(useMemo(() => DEFAULTS, []));
   const [password, setPassword] = useState("");
   const [resultUrl, setResultUrl] = useState<string>("");
   const [resultSlug, setResultSlug] = useState<string>("");
@@ -80,11 +93,6 @@ export function CreateScreen() {
       setTimeout(() => setState("done"), 2000);
     } catch (e) {
       const err = e as ApiError;
-      if (err?.status === 403 && err?.body?.detail === "private_requires_account") {
-        setState("idle");
-        nav("/signup");
-        return;
-      }
       setError(err?.body?.detail?.message ?? err?.body?.detail ?? err?.message ?? "something went wrong");
       setState("idle");
     }
@@ -105,14 +113,13 @@ export function CreateScreen() {
   const dir: "rtl" | "ltr" = isFa ? "rtl" : "ltr";
   const screenFont = isFa ? FARSI : SANS;
 
-  const visIcon = opts.visibility === "private" ? I.lock
-    : opts.visibility === "unlisted" ? I.eye
-    : I.globe;
+  const visIcon = opts.visibility === "private" ? I.lock : I.globe;
 
   return (
-    <AppFrame activeTab="create">
+    <AppFrame>
       <DamavandScene />
 
+      {/* top bar — brand left, info icon right */}
       <div
         dir={dir}
         style={{
@@ -147,68 +154,21 @@ export function CreateScreen() {
                 borderRadius: 4,
               }}
             >
-              v0.4 · batch #042
+              v0.5 · batch #042
             </span>
           )}
         </div>
-        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-          {mode === "anon" ? (
-            <button
-              type="button"
-              onClick={() => nav("/signup")}
-              style={{
-                display: "inline-flex",
-                alignItems: "center",
-                gap: 5,
-                fontFamily: MONO,
-                fontSize: 10,
-                color: INK_3,
-                letterSpacing: 0.6,
-                padding: "4px 9px",
-                borderRadius: 99,
-                border: `1px dashed ${HAIR}`,
-                background: "transparent",
-                cursor: "pointer",
-              }}
-            >
-              <span style={{ width: 5, height: 5, borderRadius: 99, background: "#6e9b56" }} />
-              {t(lang, "mode_anon_create_pill")}
-            </button>
-          ) : (
-            <button
-              type="button"
-              onClick={() => nav("/settings")}
-              aria-label={user?.email ?? "you"}
-              style={{
-                width: 28,
-                height: 28,
-                borderRadius: 999,
-                background: "linear-gradient(135deg, #fce5e0 0%, #f8c8c0 100%)",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                fontSize: 12,
-                fontWeight: 700,
-                color: "#b53a2e",
-                fontFamily: SANS,
-                border: `1px solid ${HAIR}`,
-                cursor: "pointer",
-              }}
-            >
-              {(user?.name?.[0] || user?.email?.[0] || "?").toLowerCase()}
-            </button>
-          )}
-          <button
-            type="button"
-            onClick={() => nav("/list")}
-            style={{ background: "transparent", border: "none", cursor: "pointer", padding: 0 }}
-            aria-label="my pastes"
-          >
-            <Icon d={I.search} s={20} c={INK_3} />
-          </button>
-        </div>
+        <button
+          type="button"
+          onClick={() => nav("/about")}
+          style={iconBtn}
+          aria-label={t(lang, "about")}
+        >
+          <Icon d={I.info} s={18} c={INK_3} />
+        </button>
       </div>
 
+      {/* composer */}
       <div
         dir={dir}
         style={{
@@ -297,13 +257,14 @@ export function CreateScreen() {
         </div>
       </div>
 
+      {/* options summary + publish */}
       <div
         dir={dir}
         style={{
           position: "absolute",
           left: 16,
           right: 16,
-          bottom: 92,
+          bottom: 36,
           display: "flex",
           flexDirection: "column",
           gap: 10,
@@ -427,7 +388,6 @@ export function CreateScreen() {
         )}
       </div>
 
-      {/* If password is enabled and the sheet isn't open, show an inline password input. */}
       {opts.password && !sheetOpen && (
         <div
           dir={dir}
@@ -466,8 +426,7 @@ export function CreateScreen() {
           url={resultUrl}
           onReset={reset}
           onOpen={openIt}
-          mode={mode}
-          onOpenTab={() => nav("/signup")}
+          expiresIn={opts.expires}
         />
       )}
 
@@ -475,11 +434,9 @@ export function CreateScreen() {
         <PasteOptionsSheet
           opts={opts}
           lang={lang}
-          mode={mode}
           onChange={(patch) => setOpts((o) => ({ ...o, ...patch }))}
           onClose={() => setSheetOpen(false)}
           onPublish={publish}
-          onPrivateRequiresAccount={() => nav("/signup")}
         />
       )}
     </AppFrame>

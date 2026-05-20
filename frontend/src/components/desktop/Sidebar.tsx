@@ -19,29 +19,22 @@ import {
   TEAL_TINT,
 } from "../../theme";
 import { Lang, t } from "../../i18n";
-import { useAuth } from "../../auth";
-
-export type SidebarActive = "new" | "list" | "settings" | null;
 
 type Props = {
-  active: SidebarActive;
   lang: Lang;
-  pasteCount?: number;
 };
 
-export function Sidebar({ active, lang, pasteCount }: Props) {
+export function Sidebar({ lang }: Props) {
   const nav = useNavigate();
-  const { user, mode } = useAuth();
   const isFa = lang === "fa";
-  const dir: "rtl" | "ltr" = isFa ? "rtl" : "ltr";
 
   return (
     <div
-      dir={dir}
+      dir={isFa ? "rtl" : "ltr"}
       style={{
         width: 240,
         flexShrink: 0,
-        height: "100%",
+        minHeight: "100dvh",
         background: "#f6efe7",
         [isFa ? "borderLeft" : "borderRight"]: `1px solid ${HAIR}`,
         padding: "18px 14px 16px",
@@ -49,8 +42,12 @@ export function Sidebar({ active, lang, pasteCount }: Props) {
         flexDirection: "column",
         gap: 14,
         fontFamily: isFa ? FARSI : SANS,
+        position: "sticky",
+        top: 0,
+        alignSelf: "flex-start",
       }}
     >
+      {/* brand */}
       <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "0 6px" }}>
         <BrandMark size={26} />
         <div style={{ display: "flex", flexDirection: "column" }}>
@@ -81,18 +78,19 @@ export function Sidebar({ active, lang, pasteCount }: Props) {
         </div>
       </div>
 
+      {/* big new-paste CTA */}
       <button
         type="button"
         onClick={() => nav("/")}
         style={{
-          height: 38,
-          borderRadius: 11,
+          height: 42,
+          borderRadius: 12,
           border: "none",
           cursor: "pointer",
           background: `linear-gradient(180deg, ${TEAL} 0%, ${TEAL_DARK} 100%)`,
           color: "#fff",
           fontFamily: isFa ? FARSI : SANS,
-          fontSize: 13.5,
+          fontSize: 14,
           fontWeight: 600,
           letterSpacing: -0.1,
           boxShadow:
@@ -106,53 +104,77 @@ export function Sidebar({ active, lang, pasteCount }: Props) {
         <Icon d={I.plus} s={15} c="#fff" sw={2.2} />
         <span>{t(lang, "new_paste_long")}</span>
         <span style={{ flex: 1 }} />
-        <Kbd dark>N</Kbd>
+        <Kbd dark>⌘N</Kbd>
       </button>
 
+      {/* "the deal" — manifesto card replaces nav rows */}
       <div
         style={{
-          height: 32,
-          borderRadius: 9,
+          marginTop: 8,
+          padding: "14px 14px 14px",
+          borderRadius: 13,
           background: "#fff",
           border: `1px solid ${HAIR}`,
-          display: "flex",
-          alignItems: "center",
-          gap: 8,
-          padding: "0 10px",
+          backgroundImage:
+            "radial-gradient(circle at 10px 10px, rgba(220,76,62,0.05) 1px, transparent 1px)",
+          backgroundSize: "18px 18px",
         }}
       >
-        <Icon d={I.search} s={14} c={INK_4} />
-        <span style={{ flex: 1, fontSize: 12.5, color: INK_4 }}>{t(lang, "search_pastes")}</span>
-        <Kbd>⌘K</Kbd>
-      </div>
-
-      <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
-        <SectionLabel isFa={isFa}>{t(lang, "sb_workshop")}</SectionLabel>
-        <NavRow
-          icon={I.plus}
-          label={t(lang, "new_paste_long")}
-          active={active === "new"}
-          onClick={() => nav("/")}
-        />
-        <NavRow
-          icon={I.raw}
-          label={t(lang, "my_pastes")}
-          count={pasteCount}
-          active={active === "list"}
-          onClick={() => nav("/list")}
-        />
-        <NavRow icon={I.flame} label={t(lang, "sb_burning")} count={0} />
-        <NavRow icon={I.globe} label={t(lang, "sb_public")} />
-      </div>
-
-      <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
-        <SectionLabel isFa={isFa}>{t(lang, "sb_archive")}</SectionLabel>
-        <NavRow icon={I.clock} label={t(lang, "sb_this_week")} />
-        <NavRow icon={I.clock} label={t(lang, "sb_older")} />
+        <div
+          style={{
+            fontFamily: MONO,
+            fontSize: 10,
+            fontWeight: 700,
+            color: TEAL,
+            letterSpacing: 1.4,
+            textTransform: "uppercase",
+          }}
+        >
+          {t(lang, "the_deal_title")}
+        </div>
+        <p
+          style={{
+            margin: "8px 0 0",
+            fontSize: 12.5,
+            lineHeight: "18px",
+            color: INK_2,
+            letterSpacing: -0.1,
+            whiteSpace: "pre-line",
+          }}
+        >
+          {t(lang, "the_deal_body")}
+        </p>
       </div>
 
       <div style={{ flex: 1 }} />
 
+      {/* about link */}
+      <button
+        type="button"
+        onClick={() => nav("/about")}
+        style={{
+          display: "flex",
+          alignItems: "center",
+          gap: 10,
+          height: 36,
+          padding: "0 12px",
+          borderRadius: 10,
+          background: TEAL_TINT,
+          border: `1px dashed ${TEAL_BORDER}`,
+          cursor: "pointer",
+          textAlign: "left",
+          fontFamily: "inherit",
+          width: "100%",
+        }}
+      >
+        <Icon d={I.info} s={14} c={TEAL} sw={2} />
+        <span style={{ flex: 1, fontSize: 13, color: INK, fontWeight: 600 }}>
+          {t(lang, "about")}
+        </span>
+        <span style={{ fontSize: 14, color: TEAL }}>→</span>
+      </button>
+
+      {/* indie footer */}
       <div
         style={{
           padding: "10px 12px",
@@ -165,126 +187,22 @@ export function Sidebar({ active, lang, pasteCount }: Props) {
           lineHeight: "16px",
         }}
       >
-        <div style={{ color: TEAL, fontWeight: 700, letterSpacing: 1.2, textTransform: "uppercase" }}>
-          batch #042
-        </div>
-        <div style={{ marginTop: 2 }}>v0.4.2 · 14kb · 0 cookies</div>
-        <div style={{ color: PEACH, marginTop: 2 }}>♥ hand-built in tehran</div>
-      </div>
-
-      {mode === "user" ? (
-        <NavRow
-          icon={I.user}
-          label={user?.name || user?.email?.split("@")[0] || "you"}
-          onClick={() => nav("/settings")}
-          active={active === "settings"}
-        />
-      ) : (
-        <button
-          type="button"
-          onClick={() => nav("/signup")}
+        <div
           style={{
             display: "flex",
-            alignItems: "center",
-            gap: 10,
-            height: 36,
-            padding: "0 12px",
-            borderRadius: 10,
-            background: TEAL_TINT,
-            border: `1px dashed ${TEAL_BORDER}`,
-            cursor: "pointer",
-            textAlign: "left",
-            fontFamily: "inherit",
-            width: "100%",
+            justifyContent: "space-between",
+            alignItems: "baseline",
+            color: INK_4,
           }}
         >
-          <span style={{ width: 5, height: 5, borderRadius: 99, background: PEACH }} />
-          <span style={{ flex: 1, fontSize: 13, color: INK, fontWeight: 600 }}>
-            {t(lang, "mode_open_a_tab")}
+          <span style={{ color: TEAL, fontWeight: 700, letterSpacing: 1.2, textTransform: "uppercase" }}>
+            batch #042
           </span>
-          <span style={{ fontSize: 14, color: TEAL }}>→</span>
-        </button>
-      )}
-    </div>
-  );
-
-  function SectionLabel({ children, isFa }: { children: React.ReactNode; isFa: boolean }) {
-    return (
-      <div
-        style={{
-          fontFamily: MONO,
-          fontSize: 10,
-          color: INK_4,
-          letterSpacing: 1.2,
-          textTransform: "uppercase",
-          padding: "6px 10px 2px",
-          direction: "ltr",
-          textAlign: isFa ? "right" : "left",
-        }}
-      >
-        {children}
+          <span style={{ color: INK_4 }}>v0.5.0</span>
+        </div>
+        <div style={{ marginTop: 4 }}>14kb · 0 cookies · 0 trackers</div>
+        <div style={{ color: PEACH, marginTop: 2 }}>♥ no signup · no accounts</div>
       </div>
-    );
-  }
-}
-
-type NavRowProps = {
-  icon: string;
-  label: string;
-  count?: number;
-  active?: boolean;
-  kbd?: string;
-  onClick?: () => void;
-};
-
-function NavRow({ icon, label, count, active = false, kbd, onClick }: NavRowProps) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      style={{
-        display: "flex",
-        alignItems: "center",
-        gap: 10,
-        height: 34,
-        padding: "0 12px",
-        borderRadius: 9,
-        background: active ? "#fff" : "transparent",
-        border: `1px solid ${active ? HAIR : "transparent"}`,
-        boxShadow: active ? "0 1px 0 rgba(0,0,0,0.02)" : "none",
-        cursor: "pointer",
-        textAlign: "left",
-        fontFamily: "inherit",
-        width: "100%",
-      }}
-    >
-      <Icon d={icon} s={16} c={active ? TEAL : INK_3} sw={active ? 2 : 1.6} />
-      <span
-        style={{
-          flex: 1,
-          fontSize: 13.5,
-          fontWeight: active ? 600 : 500,
-          color: active ? INK : INK_2,
-          letterSpacing: -0.1,
-        }}
-      >
-        {label}
-      </span>
-      {count != null && (
-        <span
-          style={{
-            fontFamily: MONO,
-            fontSize: 10.5,
-            color: active ? TEAL : INK_4,
-            background: active ? TEAL_TINT : "transparent",
-            padding: active ? "1px 6px" : 0,
-            borderRadius: 6,
-          }}
-        >
-          {count}
-        </span>
-      )}
-      {kbd && <Kbd>{kbd}</Kbd>}
-    </button>
+    </div>
   );
 }

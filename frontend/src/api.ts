@@ -1,4 +1,4 @@
-export type Visibility = "public" | "unlisted" | "private";
+export type Visibility = "public" | "private";
 export type ExpiresIn = "10m" | "1h" | "1d" | "1w" | "never";
 
 export interface PasteCreate {
@@ -41,33 +41,10 @@ export interface PasteMeta {
   expires_at: string | null;
   created_at: string;
   line_count: number;
-}
-
-export interface PasteListItem {
-  slug: string;
-  title: string | null;
-  snippet: string;
-  language: string;
-  visibility: Visibility;
-  burn_after_read: boolean;
-  expires_at: string | null;
-  created_at: string;
-}
-
-export interface User {
-  id: number;
-  email: string;
-  name: string | null;
-  created_at: string;
-}
-
-export interface AuthResponse {
-  user: User;
-  token: string;
+  char_count: number;
 }
 
 const OWNER_KEY = "mp_owner_token";
-const TOKEN_KEY = "mp_token";
 
 function getOwnerToken(): string {
   let t = localStorage.getItem(OWNER_KEY);
@@ -78,15 +55,6 @@ function getOwnerToken(): string {
     localStorage.setItem(OWNER_KEY, t);
   }
   return t;
-}
-
-export function getAuthToken(): string | null {
-  return localStorage.getItem(TOKEN_KEY);
-}
-
-export function setAuthToken(token: string | null) {
-  if (token) localStorage.setItem(TOKEN_KEY, token);
-  else localStorage.removeItem(TOKEN_KEY);
 }
 
 export class ApiError extends Error {
@@ -100,14 +68,14 @@ export class ApiError extends Error {
 }
 
 async function req<T>(path: string, init: RequestInit = {}): Promise<T> {
-  const headers: Record<string, string> = {
-    "Content-Type": "application/json",
-    "X-Owner-Token": getOwnerToken(),
-    ...((init.headers as Record<string, string>) || {}),
-  };
-  const tok = getAuthToken();
-  if (tok && !headers["Authorization"]) headers["Authorization"] = `Bearer ${tok}`;
-  const r = await fetch(`/api${path}`, { ...init, headers });
+  const r = await fetch(`/api${path}`, {
+    ...init,
+    headers: {
+      "Content-Type": "application/json",
+      "X-Owner-Token": getOwnerToken(),
+      ...((init.headers as Record<string, string>) || {}),
+    },
+  });
   const text = await r.text();
   const data = text ? (() => { try { return JSON.parse(text); } catch { return text; } })() : null;
   if (!r.ok) throw new ApiError(r.statusText, r.status, data);
@@ -127,41 +95,6 @@ export function getPasteMeta(slug: string): Promise<PasteMeta> {
   return req<PasteMeta>(`/pastes/${slug}/meta`);
 }
 
-export function listPastes(q?: string, visibility?: Visibility): Promise<PasteListItem[]> {
-  const params = new URLSearchParams();
-  if (q) params.set("q", q);
-  if (visibility) params.set("visibility", visibility);
-  const qs = params.toString();
-  return req<PasteListItem[]>(`/pastes${qs ? `?${qs}` : ""}`);
-}
-
-export function deletePaste(slug: string): Promise<void> {
-  return req<void>(`/pastes/${slug}`, { method: "DELETE" });
-}
-
 export function rawUrl(slug: string): string {
   return `/api/pastes/${slug}/raw`;
-}
-
-// auth
-export function signUp(email: string, password: string, name?: string): Promise<AuthResponse> {
-  return req<AuthResponse>("/auth/signup", {
-    method: "POST",
-    body: JSON.stringify({ email, password, name }),
-  });
-}
-
-export function signIn(email: string, password: string): Promise<AuthResponse> {
-  return req<AuthResponse>("/auth/signin", {
-    method: "POST",
-    body: JSON.stringify({ email, password }),
-  });
-}
-
-export function fetchMe(): Promise<User> {
-  return req<User>("/auth/me");
-}
-
-export function signOut(): Promise<void> {
-  return req<void>("/auth/signout", { method: "POST" });
 }

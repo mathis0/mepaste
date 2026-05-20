@@ -5,14 +5,14 @@ import os
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from .routers import auth, pastes
+from .routers import pastes
 
 
 def create_app() -> FastAPI:
     app = FastAPI(
         title="mepaste",
-        version="0.4.2",
-        description="one person, one textarea, one short link.",
+        version="0.5.0",
+        description="one person, one textarea, one short link. anonymous, one-shot.",
     )
 
     cors_origin = os.environ.get("CORS_ORIGIN", "http://localhost:5173")
@@ -26,9 +26,8 @@ def create_app() -> FastAPI:
 
     @app.get("/api/health")
     async def health() -> dict[str, str]:
-        return {"status": "fresh", "vintage": "v0.4.2"}
+        return {"status": "fresh", "vintage": "v0.5.0"}
 
-    app.include_router(auth.router)
     app.include_router(pastes.router)
     return app
 

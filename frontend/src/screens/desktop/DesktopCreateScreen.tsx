@@ -6,7 +6,6 @@ import { DesktopSmashOverlay } from "../../components/desktop/DesktopSmashOverla
 import { Icon } from "../../components/Icon";
 import { Kbd } from "../../components/desktop/Kbd";
 import { PublishToast } from "../../components/PublishToast";
-import { Stamp } from "../../components/Stamp";
 import { I } from "../../icons";
 import {
   CARD,
@@ -19,7 +18,6 @@ import {
   MONO,
   PEACH,
   SANS,
-  SURFACE,
   TEAL,
   TEAL_BORDER,
   TEAL_DARK,
@@ -29,40 +27,27 @@ import {
 import { ApiError, createPaste, ExpiresIn, Visibility } from "../../api";
 import { t, useLang } from "../../i18n";
 import { expiryLabel } from "../../components/PasteOptionsSheet";
-import { useAuth } from "../../auth";
 
 type State = "idle" | "smashing" | "done";
 
 const EXPIRY_OPTIONS: ExpiresIn[] = ["10m", "1h", "1d", "1w", "never"];
 const VIS_OPTIONS: { id: Visibility; icon: string }[] = [
   { id: "public", icon: I.globe },
-  { id: "unlisted", icon: I.eye },
   { id: "private", icon: I.lock },
 ];
-
-function defaults() {
-  return {
-    visibility: (localStorage.getItem("mp_default_visibility") as Visibility) || "public",
-    expires: (localStorage.getItem("mp_default_expires") as ExpiresIn) || "1d",
-    burn: localStorage.getItem("mp_default_burn") === "1",
-    password: false,
-  };
-}
 
 export function DesktopCreateScreen() {
   const lang = useLang();
   const isFa = lang === "fa";
   const dir: "rtl" | "ltr" = isFa ? "rtl" : "ltr";
   const nav = useNavigate();
-  const { mode, user } = useAuth();
 
-  const init = useMemo(defaults, []);
   const [state, setState] = useState<State>("idle");
   const [title, setTitle] = useState("");
   const [content, setContent] = useState("");
-  const [visibility, setVisibility] = useState<Visibility>(init.visibility);
-  const [expires, setExpires] = useState<ExpiresIn>(init.expires);
-  const [burn, setBurn] = useState<boolean>(init.burn);
+  const [visibility, setVisibility] = useState<Visibility>("public");
+  const [expires, setExpires] = useState<ExpiresIn>("1d");
+  const [burn, setBurn] = useState(false);
   const [usePw, setUsePw] = useState(false);
   const [password, setPassword] = useState("");
   const [resultUrl, setResultUrl] = useState("");
@@ -91,11 +76,6 @@ export function DesktopCreateScreen() {
       setTimeout(() => setState("done"), 2000);
     } catch (e) {
       const err = e as ApiError;
-      if (err?.status === 403 && err?.body?.detail === "private_requires_account") {
-        setState("idle");
-        nav("/signup");
-        return;
-      }
       setError(err?.body?.detail?.message ?? err?.body?.detail ?? err?.message ?? "something went wrong");
       setState("idle");
     }
@@ -117,39 +97,15 @@ export function DesktopCreateScreen() {
 
   return (
     <DesktopFrame
-      active="new"
       lang={lang}
-      crumbs={[t(lang, "cb_workshop"), t(lang, "cb_new_paste")]}
+      crumbs={[t(lang, "new_paste_long")]}
       hints={[
         [t(lang, "hint_publish"), ["⌘", "↩"]],
         [t(lang, "hint_cancel"), ["esc"]],
       ]}
-      topRight={
-        <button
-          type="button"
-          style={{
-            height: 32,
-            padding: "0 14px",
-            borderRadius: 9,
-            border: `1px solid ${HAIR}`,
-            background: "#fff",
-            fontFamily: SANS,
-            fontSize: 12.5,
-            fontWeight: 500,
-            color: INK_2,
-            display: "flex",
-            alignItems: "center",
-            gap: 6,
-            cursor: "pointer",
-          }}
-        >
-          <Icon d={I.flask} s={14} c={INK_3} />
-          <span>{t(lang, "shortcuts")}</span>
-        </button>
-      }
     >
       <div style={{ flex: 1, display: "flex", minHeight: 0, position: "relative" }}>
-        {/* Composer column */}
+        {/* composer column */}
         <div
           style={{
             flex: 1,
@@ -160,7 +116,7 @@ export function DesktopCreateScreen() {
             minWidth: 0,
           }}
         >
-          {/* hero strip with damavand */}
+          {/* Damavand hero */}
           <div
             style={{
               position: "relative",
@@ -190,7 +146,7 @@ export function DesktopCreateScreen() {
                 top: 24,
                 zIndex: 2,
                 [isFa ? "right" : "left"]: 26,
-                [isFa ? "left" : "right"]: 320,
+                [isFa ? "left" : "right"]: 60,
               }}
             >
               <div
@@ -222,18 +178,6 @@ export function DesktopCreateScreen() {
                 <span style={{ color: TEAL }}>{t(lang, "hero_headline_2")}</span>
               </div>
             </div>
-            <div
-              style={{
-                position: "absolute",
-                top: 18,
-                zIndex: 2,
-                [isFa ? "left" : "right"]: 22,
-              }}
-            >
-              <Stamp color={WARN} rotate={isFa ? -9 : 9}>
-                {t(lang, "stamp_no_saas")}
-              </Stamp>
-            </div>
           </div>
 
           {/* composer card */}
@@ -247,7 +191,7 @@ export function DesktopCreateScreen() {
               display: "flex",
               flexDirection: "column",
               overflow: "hidden",
-              minHeight: 0,
+              minHeight: 360,
             }}
           >
             <div
@@ -325,10 +269,9 @@ export function DesktopCreateScreen() {
               }}
             >
               <span>{lineCount} lines · {charCount} chars</span>
-              <span>·</span>
               <span style={{ flex: 1 }} />
               <span>
-                <span style={{ color: PEACH }}>●</span> autosaved a moment ago
+                <span style={{ color: PEACH }}>●</span> {t(lang, "fresh_off_vine")}
               </span>
             </div>
           </div>
@@ -350,12 +293,11 @@ export function DesktopCreateScreen() {
             <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
               {VIS_OPTIONS.map((o) => {
                 const active = visibility === o.id;
-                const locked = o.id === "private" && mode === "anon";
                 return (
                   <button
                     key={o.id}
                     type="button"
-                    onClick={() => locked ? nav("/signup") : setVisibility(o.id)}
+                    onClick={() => setVisibility(o.id)}
                     style={{
                       display: "flex",
                       alignItems: "center",
@@ -368,35 +310,18 @@ export function DesktopCreateScreen() {
                       width: "100%",
                       textAlign: isFa ? "right" : "left",
                       fontFamily: "inherit",
-                      opacity: locked ? 0.7 : 1,
                     }}
                   >
                     <Icon d={o.icon} s={16} c={active ? TEAL : INK_3} sw={active ? 2 : 1.6} />
                     <div style={{ flex: 1 }}>
-                      <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 13.5, fontWeight: 600, color: active ? TEAL : INK_2 }}>
-                        <span>{t(lang, o.id)}</span>
-                        {locked && (
-                          <span
-                            style={{
-                              display: "inline-flex",
-                              alignItems: "center",
-                              gap: 3,
-                              fontFamily: MONO,
-                              fontSize: 9,
-                              color: PEACH,
-                              letterSpacing: 1,
-                              textTransform: "uppercase",
-                              fontWeight: 700,
-                              padding: "1px 5px",
-                              borderRadius: 4,
-                              border: "1px dashed rgba(110,155,86,0.4)",
-                              background: "rgba(110,155,86,0.08)",
-                            }}
-                          >
-                            <Icon d={I.lock} s={9} c={PEACH} sw={2.5} />
-                            {t(lang, "mode_tab_only")}
-                          </span>
-                        )}
+                      <div
+                        style={{
+                          fontSize: 13.5,
+                          fontWeight: 600,
+                          color: active ? TEAL : INK_2,
+                        }}
+                      >
+                        {t(lang, o.id)}
                       </div>
                       <div style={{ fontSize: 11.5, color: INK_3 }}>
                         {t(lang, ("desc_" + o.id) as any)}
@@ -579,8 +504,7 @@ export function DesktopCreateScreen() {
             url={resultUrl}
             onReset={reset}
             onOpen={() => nav(`/p/${resultSlug}`)}
-            mode={mode}
-            onOpenTab={() => nav("/signup")}
+            expiresIn={expires}
           />
         )}
       </div>

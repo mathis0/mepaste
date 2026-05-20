@@ -1,15 +1,14 @@
 import { ReactNode } from "react";
-import { TabBar, Tab } from "./TabBar";
 import { SURFACE } from "../theme";
 
 type Props = {
   children: ReactNode;
-  activeTab?: Tab | null;
 };
 
-// Centered max-width 430 column. Fills the viewport on mobile.
-// All screens render absolutely inside this column, matching the design's 390-wide artboards.
-export function AppFrame({ children, activeTab }: Props) {
+// Centered max-width 430px column. Fills the viewport on mobile.
+// All screens render absolutely inside this column, matching the design's
+// 390-wide artboards. No bottom tab bar — mepaste is one-shot.
+export function AppFrame({ children }: Props) {
   return (
     <div
       style={{
@@ -34,7 +33,6 @@ export function AppFrame({ children, activeTab }: Props) {
         }}
       >
         {children}
-        {activeTab && <TabBar active={activeTab} />}
       </div>
     </div>
   );
